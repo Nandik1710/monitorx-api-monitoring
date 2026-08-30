@@ -1,0 +1,32 @@
+node_modules/
+dist/
+build/
+coverage/
+.turbo/
+.cache/
+
+# Local configuration and secrets
+.env
+.env.*
+!.env.example
+*.pem
+*.key
+*.crt
+secrets/
+
+# Generated/runtime data
+logs/
+tmp/
+*.log
+*.sqlite
+
+# Tooling and operating-system files
+.DS_Store
+Thumbs.db
+.idea/
+.vscode/
+
+howToRun.txt
+Prompts.txt
+updates.txt
+
