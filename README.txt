@@ -278,10 +278,4 @@ docs/                          Architecture, API, runbooks, and ADRs
 tests/                         Cross-package unit, integration, E2E, security, and fixtures
 scripts/                       Development, migration, seed, smoke-test, and operations helpers
 
-Living project files
---------------------
-- reamdme.txt: full project understanding and target design.
-- howToRun.txt: current setup, credentials, exact commands, manual actions, and prompt-by-prompt runbook. Update after every build prompt.
-- updates.txt: chronological summary of what each prompt changed, tests run, and manual actions. Update after every build prompt.
-- Prompts.txt: the ordered 15-prompt build plan.
 
