@@ -4,6 +4,10 @@ build/
 coverage/
 .turbo/
 .cache/
+.vite/
+.pnpm-store/
+*.tsbuildinfo
+pnpm-debug.log*
 
 # Local configuration and secrets
 .env
@@ -26,7 +30,11 @@ Thumbs.db
 .idea/
 .vscode/
 
-howToRun.txt
-Prompts.txt
-updates.txt
+# Local Docker data and generated reports
+docker/data/
+playwright-report/
+test-results/
 
+Prompts.txt
+howToRun.txt
+updates.txt

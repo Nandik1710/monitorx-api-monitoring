@@ -1,0 +1,33 @@
+{
+  "name": "monitor-x",
+  "version": "0.1.0",
+  "private": true,
+  "description": "Monitor-X API testing and reliability monitoring platform",
+  "packageManager": "pnpm@11.19.0",
+  "engines": {
+    "node": ">=22.15.0 <25"
+  },
+  "scripts": {
+    "build": "pnpm --recursive --if-present build",
+    "dev": "concurrently --kill-others-on-fail \"pnpm --filter @monitorx/api dev\" \"pnpm --filter @monitorx/worker dev\" \"pnpm --filter @monitorx/web dev\"",
+    "format": "prettier --write \"**/*.{js,mjs,cjs,json,yaml,yml,ts,tsx,css,html,md}\"",
+    "format:check": "prettier --check \"**/*.{js,mjs,cjs,json,yaml,yml,ts,tsx,css,html,md}\"",
+    "lint": "eslint .",
+    "test": "vitest run --passWithNoTests",
+    "typecheck": "pnpm --recursive --if-present typecheck",
+    "verify": "pnpm format:check && pnpm lint && pnpm typecheck && pnpm test && pnpm build"
+  },
+  "devDependencies": {
+    "@eslint/js": "9.17.0",
+    "@types/node": "22.10.5",
+    "@types/supertest": "6.0.2",
+    "concurrently": "9.1.2",
+    "eslint": "9.17.0",
+    "prettier": "3.4.2",
+    "supertest": "7.0.0",
+    "tsx": "4.19.2",
+    "typescript": "5.7.2",
+    "typescript-eslint": "8.18.0",
+    "vitest": "2.1.8"
+  }
+}

@@ -1,0 +1,10 @@
+MONITOR-X PROJECT GUIDE POINTER
+===============================
+
+The repository guide is maintained in README.txt. It contains the consolidated project understanding, scope,
+architecture, security requirements, testing strategy, and implementation roadmap based on:
+
+Supporting Documents/Monitor-X_Final_Production_Specification.pdf
+
+This pointer exists because the original setup documentation used the misspelled filename reamdme.txt. Keep
+README.txt as the single source of truth until a future documentation phase explicitly consolidates the files.
