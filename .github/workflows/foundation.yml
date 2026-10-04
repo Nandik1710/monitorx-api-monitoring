@@ -21,3 +21,10 @@ jobs:
           cache: pnpm
       - run: pnpm install --frozen-lockfile
       - run: pnpm verify
+      - run: docker compose -f docker/compose.yml up -d --wait
+      - run: pnpm db:migrate
+        env:
+          DATABASE_URL: postgresql://monitorx:local_development_only@localhost:5432/monitorx?schema=public
+      - run: pnpm test:integration
+      - if: always()
+        run: docker compose -f docker/compose.yml down

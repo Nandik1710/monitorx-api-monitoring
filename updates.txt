@@ -1,0 +1,493 @@
+MONITOR-X DEVELOPMENT UPDATES
+==============================
+
+Update rule
+-----------
+Add one chronological entry after every numbered build prompt. Each entry must include implementation summary, tests, manual actions, credentials/services, limitations, and the next prompt. Do not mark work complete unless it is implemented and verified.
+
+Current status
+-------------
+Prompts 6, 7, 8 and 9 implemented and verified in order. A separately requested desktop frontend redesign
+now follows those phases. Prompt 10 has NOT been started.
+
+Desktop frontend overhaul - VS Code surfaces / rose accents (2026-10-04)
+-----------------------------------------------------------------------
+Implementation:
+- Replaced the single-page entry flow with React Router pages and a persistent workspace/project sidebar,
+  breadcrumbs, proper history/back/deep links, focus handling and reduced-motion-aware page transitions.
+- Applied the user's final combination: blue VS Code light/dark surfaces plus rose/red primary, sidebar and
+  chart tokens. Added bundled Source Code Pro/Source Serif 4, Remix icons, Tailwind and base-rhea registry
+  configuration. The existing Vite app was retained; duplicate Next font declarations/circular CSS repaired.
+- Shared Base UI buttons/confirmation dialogs, themed forms, empty/loading/error states, tables, auth pages,
+  workspace/project/collection cards, dedicated test editor, environments/secrets and team pages.
+- Retained existing API operations, tenant checks, worker execution, scheduling and reliability metrics.
+  Added dirty-test navigation protection, theme persistence and project context on result links. Masked
+  secret reads, safe generic page errors and in-memory email-link token handling remain enforced.
+- shadcn guidance informed token/Base UI integration; React guidance informed effect cleanup, stale-data
+  handling and component boundaries; browser verification guidance drove real UI -> API -> DB/worker checks.
+
+Verification:
+- 128 tests passed (117 existing plus 11 navigation/theme/security-focused UI tests); database-enabled suites
+  remain opt-in. All workspace TypeScript checks and production builds passed using the generated client.
+- Formatting and ESLint passed. Theme CLI peer dependency mismatch was fixed with a shadcn-scoped Zod
+  override; peer check passed. Frontend build split framework/primitives into separate chunks.
+- Real browser checks: disposable verified sign-in; workspace/project/environment/collection creation;
+  new test, assertions/environment, save/reopen, unsaved-change Cancel, worker run and execution details.
+  Worker rejected the disposable private target with configuration_error before network access. No real
+  external endpoint or real credentials were used. History detail links preserve workspace/project scope.
+- Light and dark modes inspected; 1024px history/detail and 1366px editor checks showed no page overflow.
+  Direct detail reload preserved session/context/theme; no browser runtime errors or Vite overlays found.
+- Root Prisma regeneration was blocked by the user's running API/worker holding its Windows native DLL.
+  Existing generated client was used for independent checks; this is not a claim that root pnpm verify or
+  the 66-case database integration suite was rerun successfully during the redesign. Stop apps and run the
+  documented full gate before further phases. No schema changes were made by this frontend work.
+
+Manual actions and limits:
+- Follow the new top section in howToRun.txt: stop apps, frozen install, verify, then dev. No env changes.
+- Laptop/desktop only, minimum 1024 CSS px. Theme inputs/selects are styled native controls; Base UI provides
+  buttons/dialogs, not a wholesale generated component registry. No mobile support or zero-defect guarantee.
+- Existing bounded list limits remain; theme preference is stored but drafts/credentials are not. An expired
+  session or development-server restart can require Restore existing session/sign-in and discard drafts.
+- Incidents/alerts remain read-only/future Prompt 10. No deployment, commit, production action or secret rotation.
+- Existing user modifications and local configuration were preserved. Stop here; do not begin Prompt 10.
+- Final checkpoint: frozen-lockfile install, peer check and final frontend typecheck/build passed. Final build
+  has separate framework/primitives chunks with no oversized-chunk warning. Team data also rendered correctly
+  at 1024px. Test browser closed; only the disposable account/workspace and their test records were removed
+  (not backed up). User app terminals and Docker services were left running. Screenshot evidence is under tmp/.
+
+Prompt 9 - history, details and reliability dashboards (2026-10-04)
+-----------------------------------------------------------------
+- Added strict shared query/view contracts and tenant-authorized project/collection/test history, execution
+  details and metric APIs. Pagination and filters cover time, status, environment, current tag and run kind.
+- Added PostgreSQL count/average/continuous p50/p95/p99 aggregation, separate scheduled uptime and all-run
+  pass rate, health counts, error classes, slowest/degraded endpoints and read-only recent/open incidents.
+  Indexed lateral lookups select the latest result per test; no full execution history is loaded into API memory.
+- Added authenticated deep-link dashboard/history/detail pages, test History, execution result links, escaped
+  code viewers, copy controls, status icons plus text, loading/error/empty states and responsive scroll tables.
+  React guidance informed effect cleanup and accessible controls; browser-verification guidance drove real
+  desktop/mobile checks rather than relying only on builds.
+- Detail responses whitelist safe fields, never snapshots/ciphertext. Preview visibility expires after seven
+  days; metadata read windows are capped at 90 days. Physical deletion is a later retention task.
+- Added migration 20261004050000_reliability_indexes. All seven migrations apply to empty integration schemas
+  and the existing local database, with no schema drift. Frozen-lockfile install succeeded. No new credentials.
+- Tests: full integration suite passed 66 cases, including three new aggregation/history/retention cases.
+  Initial full quality gate passed 116 tests plus formatting/lint/types/builds; final additional timestamp
+  precision regression and UI refinement are checked in the final verification checkpoint below.
+  An invalid fixture missing its environment was fixed; a Windows Prisma engine lock caused by overlapping
+  verification/integration processes was resolved by running checks sequentially, with no database deletion.
+- Browser: disposable verified account/workspace; synthetic healthy/degraded/down samples; real collection
+  queue submission, live updates and worker private-address rejection; persisted details; project/collection
+  dashboard navigation; 7-day range; FAILED filter; assertion expansion and Copy; desktop plus 390px mobile.
+  No console errors, framework overlay or horizontal page overflow. Mobile tables scroll within their container.
+- Cleanup: removed only the disposable browser account/workspace and temporary fixture helper, stopped local
+  app processes. Non-secret screenshots remain in ignored tmp/. Existing user changes and .env were preserved.
+- Manual actions: use the final Prompt 9 howToRun.txt section. Start Docker, migrate, run checks sequentially,
+  start apps, submit an authorized public API test, inspect its run, configure/pause a schedule and inspect
+  dashboards. User account/email verification and any local secret-key initialization remain user-controlled.
+- Limitations: incidents displayed read-only; no incident creation or alert delivery until Prompt 10. No cloud
+  deployment, production SLA/load-test claim, physical retention purge or advanced query-language expansion.
+  Direct per-test aggregates suit current scale; very large tenants need later rollups and query-budget testing.
+- Next action: STOP. Await explicit instruction before Prompt 10.
+
+Final verification checkpoint: pnpm verify PASSED after browser refinements (117 regular/transport/component
+tests, formatting, lint, strict type checks and production builds). Full integration: 66 passed; five transport
+tests appear in both suites, so these counts must not be summed as unique tests. Frozen-lockfile installation,
+all seven migrations and schema-diff checks passed. git diff --check passed (only local CRLF conversion warnings).
+App ports 4000/4100/5173 are stopped; PostgreSQL, Redis and Mailpit remain healthy on localhost. No commits.
+
+Prompt 8 - schedules, idempotency and distributed admission (2026-10-04)
+------------------------------------------------------------------------
+- Added interval/hourly/daily schedules, IANA time zones, pause/resume, explicit environments, absolute UTC
+  maintenance windows, incident thresholds, enabled state and next/last run timestamps with tenant-scoped APIs/UI.
+- Added transactional near-future reconciliation, deterministic hashed BullMQ IDs and a database unique logical
+  tuple testId/scheduledAt/runKind. Redis reconstruction retains PostgreSQL as the durable source of truth.
+- Pause/edit cancels queued slots; worker admission rechecks current schedule/test state. One overdue slot is
+  caught up before advancing beyond now; unlimited outage replay is prevented. Internal lag/reconciliation metrics added.
+- Database admission locks enforce global 20, per-org 3, per-host 2 concurrent runs across processes, plus collection
+  limits. Optional durable per-org rolling-minute quotas defer queued jobs with capped backoff/jitter, without busy waits.
+- Added migration 20261004040000_scheduling and cron-parser 5.10.1. No secrets/new external services required.
+- Verification: pnpm verify passed 112 tests, formatting, lint, strict types and builds. Full integration passed 62;
+  the final focused run suite passed 11 tests including one additional schedule API authorization case (63 unique
+  integration cases now). No schema drift. Fixed advisory-lock void decoding and the organization view contract.
+- Coverage includes DST spring/autumn, invalid zones, maintenance boundaries, two reconciler instances, unique slot
+  constraints, deterministic Redis rebuild, pause/resume, worker rechecks, cross-processor limits, quota rescheduling,
+  Viewer/foreign-tenant API denial and schedule input validation. Existing run/auth/tenancy regressions remain passing.
+- Updated both living docs and docs/architecture/scheduling.md. Manual flow: enable/save test, choose Schedule,
+  environment/cadence/zone, explicitly enable, wait one interval, pause/resume and inspect maintenance behavior.
+- Limitations: maintenance is absolute windows; incident thresholds await Prompt 10. Quotas are trusted DB settings;
+  global/org/host concurrency caps are conservative code defaults. Operational metrics reset on worker restart.
+  Legacy schedule rows without environment/creator metadata do not auto-run. No shared Redis flush or deployment.
+- Next: Prompt 9, already authorized. Stop after that phase; do not start incidents/alerts implementation.
+
+Prompt 7 - durable asynchronous runs and live events (2026-10-04)
+----------------------------------------------------------------
+- Added immutable encrypted-secret configuration snapshots, collection-run groups, durable execution events,
+  claim leases, cancellation and indexed reconciliation state in additive migration 20261004030000_execution_runs.
+- Added tenant/role/CSRF-protected manual and collection submission returning 202 without Redis/target waits;
+  polling and cancellation APIs, BullMQ execution/collection/maintenance processors and reserved alerts/imports queues.
+- Workers recheck membership, decrypt only referenced secrets in memory, enforce collection parallelism, persist
+  results/assertions before completion, retry persistence without repeating target HTTP, and recover interrupted
+  claims as UNKNOWN. Redis loss does not delete durable queued submissions.
+- Added authenticated, origin-checked WebSocket events with repeated session/membership checks and durable cursors.
+  Added explicit-environment Run now/Cancel controls, status text, polling fallback and connection cleanup.
+- Pinned BullMQ 6.3.11 and ws 8.22.0; disabled optional msgpackr native build scripts, preserving supply-chain controls.
+- Verification: pnpm verify passed 101 regular/transport/component tests plus lint, types and builds. Complete
+  integration rerun passed 59 tests, including 7 new run/queue/event cases. Prisma migration diff showed no drift.
+  Fixed a fixture actor-shape issue, transaction wait limits, one lint issue and a decompression-abort edge case
+  found by the combined regression run. No test failure remains at this checkpoint.
+- Manual flow and environment setup are in howToRun.txt. No external credentials; same private root key ring.
+  React review guided accessible labels, explicit request intent and cleanup. Browser end-to-end review follows
+  after the requested dashboard phase; component/API/real-queue checks passed here.
+- Limits: no exactly-once guarantee for remote HTTP side effects; interrupted outcomes are explicit UNKNOWN.
+  Alerts/imports product processors await Prompts 10/11. Live events use bounded PostgreSQL polling, not optimized
+  high-volume fanout. No deployment/commit or shared Redis flush. Next: authorized Prompt 8.
+
+Prompt 6 - safe execution engine (2026-10-04)
+---------------------------------------------
+- Implemented worker-only normalization, bounded HTTP transport, public IPv4/IPv6 validation, all-answer DNS
+  checks, pinned connections/peer matching, redirect revalidation, TLS validation, total timeout and cancellation.
+- Added decoded/wire response caps, compressed-response handling, safe JSON variable expansion, auth handling,
+  independent status/latency/header/JSON/text/RE2/XML assertions, error classification and redacted serialization.
+- Added 30 engine unit cases and 5 real local transport cases. Focused 35 tests passed; pnpm verify passed
+  formatting, lint, strict types, 99 tests and all builds. Existing database suites were not changed in this phase.
+- Manual: install locked dependencies, run verify and the focused command in howToRun.txt. No new env/credentials.
+- Safety limitations: cross-origin redirects refused; child-path JSONPath/XPath subset only; optional JSON Schema
+  not implemented; non-JSON previews omitted; production egress isolation remains deployment work. No public
+  SSRF bypass or insecure TLS option was introduced. No API handler performs monitored requests.
+- Updated both living docs and docs/architecture/execution-engine.md. Preserved existing work; no commit/deploy.
+- Next: Prompt 7, explicitly authorized in this request.
+
+Prompt 5 - collections and reusable API test builder (2026-10-04)
+----------------------------------------------------------------
+What was implemented:
+- Tenant-scoped collection and API test CRUD routes/services, paginated lists and typed shared Zod contracts.
+  Owner/Admin/Editor may edit definitions; Viewer may read and preview. Existing project/environment/secret
+  management remains Owner/Admin-only. Authentication, CSRF, origin and durable rate-limit checks apply.
+- Additive 20261004020000_test_builder migration: revisions, advanced method flag, form rows, redirect ceiling,
+  disabled-by-default tests and organization timeout ceiling. Composite tenant/project foreign keys prevent
+  mixing tests, collections and environments across tenants or projects. Existing user changes were preserved.
+- Full request configuration: standard/explicit advanced methods, URL templates, query/header rows, NONE/JSON/
+  RAW/XML/FORM_URLENCODED bodies, reference-only bearer/basic/API-key/custom-header auth, timeouts, redirects,
+  eight assertion types, tags, selected environment and enabled state. Defaults are disabled and redirects off.
+- Bounded body/header/row/assertion/tag sizes, workspace timeout enforcement, safe field-oriented errors,
+  missing-variable rejection, sensitive-value reference enforcement and conflicting-header checks.
+- Deterministic uppercase {{NAME}} single-pass substitution and bounded previews. Preview reads public variables
+  and secret names only; it never retrieves/decrypts ciphertext or sends monitored HTTP requests.
+- Optimistic expectedRevision updates reject stale saves. Audit records retain revision and changed field names,
+  never full request snapshots or auth values. Nonempty collections and tests with execution/schedule/incident
+  records are protected from deletion.
+- Embedded frontend collection library and Request/Body/Assertions/Environment tabs, plus explicitly labelled
+  Schedule/History placeholders. Shared UI package supplies fields, buttons, notices and keyboard-accessible tabs.
+  React skill review informed labels, keyboard navigation and state cleanup; browser verification caught and
+  corrected checkbox alignment. Collection/test lists paginate; editing is read-only for Viewers.
+- Added docs/architecture/test-builder.md; updated integration-test guide and the first-test flow in howToRun.txt.
+
+Tests/checks:
+- pnpm 11.19.0 frozen-lockfile install passed with Node.js 22.15.0.
+- pnpm verify passed formatting, ESLint, all strict typechecks, 64 regular/component tests and all builds.
+  This includes 36 request-definition contract tests and 9 builder component tests.
+- pnpm test:integration passed all 47 tests against local PostgreSQL/Redis/Mailpit, including 12 builder tests.
+  All four migrations applied in fresh isolated schemas. Local Prisma/database comparison reported no drift.
+- Builder coverage includes CRUD/pagination, every role, direct-service checks, forged tenant headers,
+  same-tenant cross-project database constraints, configuration persistence, concurrent revision conflicts,
+  audit redaction, CSRF, timeout ceilings, protected deletion and oversized expanded-preview rejection.
+- Masked preview succeeds even with deliberately corrupt fixture ciphertext, proving it needs secret names
+  rather than decryption. A local HTTP fixture receives zero requests during save/read/preview; the run route
+  is absent and no execution record is created.
+- Actual browser: created a collection, configured bearer secret reference and status assertion, previewed
+  resolved BASE_URL with masked token, saved/reopened the test, edited status 200 to 201 and confirmed persisted
+  revision 2 in PostgreSQL. Desktop and 390px layouts inspected; no horizontal overflow or application console
+  errors observed. Viewer/invalid-input/body-mode coverage is automated, not claimed as a full browser matrix.
+- Final docs formatting and git diff --check passed (existing Windows line-ending notices only). .env remains
+  ignored and unchanged. Both living .txt files remain ignored under the existing repository policy.
+- Permanently removed only the disposable browser workspace and its account/child fixtures. Closed the test
+  browser and stopped app processes. Local Docker services remain healthy/running. No commit or deployment.
+
+Manual actions required:
+- Stop dev on Windows before Prisma generation, start Docker Desktop, preserve/create .env, install pinned
+  dependencies, run db:migrate, db:generate, verify, test:integration, then dev. Exact commands are in howToRun.txt.
+- Use your own verified account/workspace/project. Create an environment with fake public BASE_URL, create a
+  collection, add GET {{BASE_URL}}/health with status assertion 200, select the environment, preview and save.
+  Reopen it to confirm persistence. Optional fake secret/auth, invalid URL, stale edit and Viewer checks are listed.
+- Run secrets:init only if local encryption is not initialized and you want to save secrets. Protect/back up .env.
+  No new environment variables, real credentials, external providers or paid services are required for Prompt 5.
+
+Limitations:
+- Configuration only: no monitored HTTP execution, assertion evaluation, scheduling, queues, alerts or real history.
+  Enabling a definition alone does not run it. API remains stateless; execution belongs in workers in later phases.
+- URL syntax checks are not SSRF certification; DNS/IP/TLS/redirect enforcement and executable request rendering
+  are Prompt 6 work. Regex/XML are stored only. JSON Schema assertions and multipart are not implemented.
+- Conservative 256 KiB body limit, 16 KiB headers and 30-second maximum (or lower organization ceiling).
+  Workspace timeout customization is database configuration, not an exposed UI. Environment chooser caps at 100.
+- Same-project collection moves are API-only. Audit metadata is not full revision snapshots or a rollback UI.
+  Unsaved drafts are in-memory and discarded when closing/switching projects. Existing malformed legacy definitions
+  fail closed and may require explicit repair; no silent migration rewrites or validation weakening were added.
+- Existing Vite CJS deprecation notice is non-blocking; this phase did not perform dependency-major upgrades.
+
+Next: Prompt 6 (safe worker execution engine), only after explicit instruction. Stopped after Prompt 5.
+
+Prompt 4 - workspaces, authorization and tenant secrets (2026-10-04)
+---------------------------------------------------------------------
+What was implemented:
+- Workspace creation with atomic Owner membership; membership-filtered listing; Owner organization updates.
+- Hashed, seven-day, single-use invitations with verified recipient matching, resend/revoke behavior, SMTP
+  delivery and acceptance-time revalidation of the inviter's current authority.
+- Owner/Admin/Editor/Viewer permissions enforced in both API routes and shared database services. Admins
+  cannot manage privileged roles; the last active verified Owner is protected, including concurrent changes.
+- Project CRUD, environment CRUD, bounded public variables, encrypted secret writes/removal/rotation and
+  masked secret metadata. Non-empty projects and referenced environments are protected from deletion.
+- Mandatory authenticated organization context, tenant-filtered object access, strict Zod contracts, CSRF,
+  origin checks, durable per-IP/per-user quotas and sanitized errors. Removed unchecked repository paths.
+- Additive invitation migration and composite tenant foreign keys for environment/project and secret/environment.
+  Existing migrations and unrelated uncommitted Prompt 2/3 work were preserved.
+- AES-256-GCM authenticated encryption, random nonces, context binding, versioned provider-neutral key ring,
+  old-key reads/new-version writes, no fallback key and no plaintext-reveal API. Application audit records
+  cover organization, invitation, membership, project, environment and secret changes without storing values.
+- Local `pnpm secrets:init` onboarding writes one random private key without printing or replacing existing keys.
+  Deployment KMS provider interface/configuration is present, but no cloud adapter or AWS call is implemented.
+- Browser workspace settings for creation, selection, projects, environments, variables, write-only secrets,
+  invitations and team roles. The React review checklist informed labelled forms, state cleanup and confirmation
+  for deletion/secret replacement; browser verification skills guided actual UI checks.
+- Added docs/architecture/workspaces.md and updated both living documents with exact setup and manual checks.
+
+Tests/checks:
+- Pinned pnpm 11.19.0 frozen-lockfile install passed on Node.js 22.15.0.
+- pnpm verify passed: formatting, ESLint, all strict workspace typechecks, 19 regular tests and all builds.
+- pnpm test:integration passed 35 tests against actual PostgreSQL/Redis/Mailpit, including 18 workspace tests.
+  All three migrations applied to fresh isolated test schemas; the local Prisma/database diff showed no drift.
+- Coverage includes cross-tenant reads/writes, forged organization headers, direct-service permissions, role
+  escalation, privileged-invitation overwrite denial, concurrent last-owner changes and invitation acceptance,
+  expiry/replay/recipient checks, tenant foreign keys, encryption tampering/context binding/key rotation,
+  masked responses, audit redaction, SMTP failure and actual invitation-email delivery.
+- Local key initializer test passed: random key length, configured version, idempotence, no key output and
+  production/KMS/invalid-version refusal. git diff --check passed; private .env remains ignored.
+- Actual Chrome checks passed: page renders with no application console errors; registered/verified test owner,
+  created workspace/project/environment, saved a secret, confirmed cleared input and masked display, sent
+  invitation, accepted as the matching verified Viewer, confirmed clean URL and read-only Viewer settings.
+  Database inspection confirmed an encrypted envelope and corresponding audit actions. Temporary account
+  setup was used for the recipient; provider OAuth and full end-to-end key-version rotation were not browser-tested.
+- Initial lint findings were fixed. A concurrent dev process caused a Windows Prisma EPERM file lock; the
+  server was stopped and the complete final gate passed. The browser utility used its compatible bundled runtime.
+- Removed only the disposable browser workspace, its two accounts and fixture emails; stopped app processes
+  and closed the test browser. This fixture deletion is permanent; no user records were removed. Local Docker
+  services remain healthy and running. Existing .env was not changed; no commit or deployment was created.
+
+Manual actions required:
+- Start Docker Desktop, preserve/create root .env, install pinned dependencies, run pnpm secrets:init,
+  pnpm db:migrate, pnpm verify and pnpm test:integration, then pnpm dev. Stop dev before Prisma generation
+  on Windows to avoid the native-driver file lock. Full copyable steps are at the end of howToRun.txt.
+- Register/verify your own account, create a workspace/project/environment, save fake variables/secrets, and
+  invite a second verified address via Mailpit to inspect Viewer versus Admin settings access.
+- Keep encryption keys private and securely backed up. The browser test uses only temporary keys/data;
+  it does not initialize or alter your .env. Run secrets:init for your persistent local workspace.
+
+Credentials/services:
+- Local PostgreSQL, Redis and Mailpit only. No external credential, GitHub OAuth or paid service is required.
+- Persistent secret storage requires the private local key ring generated in .env; no key is committed.
+
+Known limitations:
+- KMS adapter/provisioning, bulk key rotation, invitation retry/outbox/cleanup and audit browsing are deferred.
+- Settings UI lists are capped at 100 entries; API pagination is available. Organization updates are API-only.
+- No organization deletion; project deletion requires an empty project. Old deterministic seed ciphertext is
+  deliberately fake and cannot be rotated/decrypted: replace through the authorized write path if needed.
+- Row locking serializes operations within each workspace for authorization consistency; review throughput
+  before production scaling. JavaScript plaintext strings cannot provide guaranteed in-memory zeroization.
+- No API-test features, monitored outbound requests, queue execution, cloud deployment or commit was added.
+- Living .txt documents remain ignored by the repository's existing .gitignore policy.
+
+Next step:
+- Prompt 5, only after an explicit request. Stop here.
+
+Prompt 3 - authentication and session security (2026-10-04)
+-----------------------------------------------------------
+What was implemented:
+- Email/password registration, required email verification, login, logout, password-reset requests and completion,
+  verification resend, account backoff, and authentication audit events.
+- Node scrypt password hashing with per-password random salts (N=131072, r=8, p=1); no plaintext stored passwords.
+- PostgreSQL-backed opaque access/refresh sessions with 15-minute access and absolute 7-day refresh lifetimes,
+  atomic rotation, replay-family revocation, logout revocation, and all-session revocation on password reset.
+- A separate additive authentication migration with AuthSession, AuthToken, AuthRateLimit and OAuthAttempt tables,
+  user backoff/GitHub identity fields, indexes, foreign keys and checks. The initial migration was preserved.
+- Single-use, purpose-bound hashed email tokens, expiring in 24 hours (verification) and 30 minutes (reset).
+- Secure/HttpOnly/SameSite=Lax host-only cookies, exact-origin credentialed CORS, CSRF header/cookie validation,
+  strict request schemas, stable sanitized error envelopes and generic account-enumeration-resistant messages.
+- Atomic database rate counters shared across API replicas; Redis is not required for session security.
+- Optional GitHub OAuth, disabled by default, using browser-bound state, S256 PKCE, verified primary email and
+  immutable GitHub identity. Existing password accounts are never silently linked by matching email.
+- Mailpit-compatible SMTP using pinned Nodemailer 10.0.13, bounded timeouts and remote TLS requirements; failed
+  delivery is audited without logging credentials or changing generic accepted responses.
+- A minimal accessible account form for registration, verification, sign-in, reset, session renewal and logout.
+  Email tokens arrive in URL fragments and are removed from the address bar; no localStorage session tokens.
+- Root .env loading for API/Prisma commands, shared-package generation/build hooks, localhost-only Compose service
+  bindings, integration CI steps, authentication architecture notes and both living-document updates.
+- Existing uncommitted Prompt 2 work and existing .gitignore policy were preserved. No commit was created.
+
+Verification performed:
+- Applied the additive migration to the existing local Compose PostgreSQL database without resetting its data.
+- Auth integration tests applied both migrations to a fresh random schema, tested auth behavior and removed only
+  that isolated schema. The original PostgreSQL/Redis checks also passed.
+- Integration coverage: registration/verification/login/logout; hashed storage and public-user output; generic
+  duplicate/unknown-account responses; expired tokens; single-use and concurrent token consumption; refresh
+  rotation/replay/concurrency; reset session invalidation; backoff and disabled/locked accounts; CSRF/Origin/CORS/
+  JSON validation; distributed rate counters; audit events; SMTP failure; OAuth disabled/state/replay/expiry and
+  anti-auto-linking behavior. Mailpit SMTP delivery and message contents were checked with actual local services.
+- The concurrency test exposed Prisma's default connection-acquisition timeout on cold local connections; bounded
+  acquisition/transaction waits were added and concurrent family revocation was retested successfully.
+- Regular tests cover password hashing, malformed hashes, token primitives, strict contracts/configuration,
+  GitHub PKCE/callback/profile validation and provider failures, plus all earlier foundation/contracts tests.
+- Browser checks used Chrome with an isolated agent-browser session: account creation, actual Mailpit verification,
+  verified login, renewal, logout, Mailpit password reset and sign-in with the new password, page rendering and no
+  JavaScript-visible auth cookies. No runtime errors or Vite overlay were found.
+- Final verification with pnpm 11.19.0 and Node.js 22.15.0: frozen-lockfile install passed; pnpm verify passed
+  formatting, lint, all workspace typechecks, 14 regular tests and all builds; pnpm test:integration passed all
+  17 tests (including independent database-client rate-limit sharing). Total: 31 passing tests across both runs.
+- Prisma migration/schema comparison reported no difference. Compose configuration and all three service health
+  checks passed. Git whitespace checks passed. The existing Vite CJS API deprecation warning is non-blocking.
+- Removed only the temporary browser fixture account, its linked auth records and its Mailpit messages; these
+  were disposable generated test data. Closed the test browser and stopped all three temporary app listeners.
+  Docker services remain running for the user's local setup. Existing application data and source changes remain.
+
+Manual actions:
+- Follow the new Prompt 3 section of howToRun.txt: retain your .env, add missing auth settings, start Docker,
+  install, migrate, verify, run integration tests and start the app. Register a fresh local account rather than
+  trying to log in with seed fixtures. Use Mailpit at http://localhost:8025 for verification and reset messages.
+- Optional only: create a GitHub OAuth App with callback http://localhost:4000/api/v1/auth/github/callback, place
+  its ID/secret in untracked .env, enable the toggle and restart. Real provider sign-in was not attempted without
+  credentials; controlled-provider tests verify the OAuth implementation without contacting GitHub.
+
+Limitations:
+- This is authentication, not organization-resource authorization. Prompt 4 tenancy/secrets has not started.
+- No cloud deployment, production security certification, monitoring execution or dashboard is claimed.
+- Auth SMTP delivery is synchronous; there is no durable email outbox/retry yet. Users can resend after failures.
+- Expiry indexes exist; scheduled cleanup is deferred. Preserve consumed session generations until family expiry
+  for replay detection. Apply deployment-specific audit retention and trusted-proxy settings in later hardening.
+- Secure cookies require HTTPS outside localhost and same-site frontend/API deployment. Clients must serialize
+  refresh operations; lost-response retries with a consumed refresh token require signing in again.
+- The existing .gitignore ignores howToRun.txt and updates.txt; they are updated locally but will not be included
+  in a normal commit unless the project owner changes that policy.
+
+Next step:
+- Prompt 4 - tenancy and secrets. Stopped after Prompt 3; do not begin automatically.
+
+Prompt 2 - PostgreSQL, Prisma schema, migrations, and shared contracts
+-----------------------------------------------------------------------
+What was implemented:
+- Added Prisma `6.1.0` and Prisma Client with a PostgreSQL schema for users, organizations, memberships, projects,
+  collections, environments, environment secrets, API tests, schedules, executions, assertion results, incidents,
+  incident events, notification channels, alert deliveries, API keys, and audit logs.
+- Added domain enums for roles, membership/account state, execution/health state, incidents, notifications, delivery,
+  request body modes, assertion severity, and run kinds.
+- Added timestamps, update timestamps, retention-ready `expiresAt` fields, foreign keys with safe delete behavior,
+  tenant-first indexes, and uniqueness constraints for organization memberships, project resources, schedules, and
+  alert idempotency.
+- Added the committed initial migration at `packages/db/prisma/migrations/20260831112514_init/`.
+- Added a Prisma client factory/singleton, tenant-scoped organization/project repositories, and an organization service.
+- Added strict Zod contracts for organization/project/collection/environment/test/schedule inputs, pagination, and a
+  stable typed error envelope containing code, message, requestId, and optional details.
+- Added fixed-UUID deterministic seed data spanning the relational model. Seed values are fake local fixtures and do
+  not contain usable credentials.
+- Added opt-in PostgreSQL/Redis integration setup and documentation.
+
+Tests/checks:
+- `pnpm install --frozen-lockfile` passed.
+- Prisma schema validation and Prisma Client generation passed.
+- `pnpm db:migrate` applied the initial migration successfully to the local PostgreSQL database.
+- Migration was also applied successfully to an explicitly empty temporary database, followed by a successful seed.
+- `pnpm db:seed` was rerun successfully to verify idempotence.
+- `pnpm test:integration` passed 3 tests: PostgreSQL/Redis connectivity, uniqueness/cross-tenant lookup behavior,
+  and organization identifiers on all 15 organization-owned tables.
+- `pnpm verify` passed: formatting, lint, 10 workspace typechecks, 7 regular tests, and all builds.
+
+Manual actions required:
+- Start Docker Desktop, then run `docker compose -f docker/compose.yml up -d postgres redis` before database work.
+- Use `pnpm db:migrate` and `pnpm db:seed` only against the intended local database connection.
+- Never copy local fixture or future secret values into source control or production configuration.
+
+Credentials/services:
+- No external credentials are required.
+- PostgreSQL and Redis are required for the opt-in integration suite; Mailpit remains available from Prompt 1.
+
+Known limitations:
+- Authentication, tenant membership enforcement at API routes, encryption implementation, queue workers, outbound
+  request execution, dashboards, and production migrations are not implemented yet.
+- Cross-tenant safety is represented in schema indexes and repository method signatures; API authorization will be
+  implemented in Prompt 3/4.
+
+Next step:
+- Prompt 3 - authentication and session security. Stop here until explicitly requested.
+
+Prompt 1 - monorepo foundation and local development baseline
+--------------------------------------------------------------
+What was implemented:
+- Added a pnpm `11.19.0` workspace pinned to Node.js `22.15.0`, with strict shared TypeScript settings.
+- Added workspace package manifests and build/typecheck boundaries for `apps/web`, `apps/api`, `apps/worker`,
+  `packages/db`, `packages/contracts`, `packages/test-engine`, `packages/security`, `packages/ui`,
+  `packages/cli`, and `infra/cdk`.
+- Added ESLint 9, Prettier 3, Vitest, shared environment examples, safe ignore rules, and a GitHub Actions
+  foundation workflow.
+- Added an Express API with `/health/live`, `/health/ready`, and `/api/v1/health` plus a separate worker health
+  server with live/readiness endpoints. No outbound monitored request runs in either process.
+- Added a minimal React/Vite web shell with responsive styling.
+- Added pinned Docker Compose services: PostgreSQL `16.4-alpine`, Redis `7.4.1-alpine`, and Mailpit `v1.21.8`.
+- Added foundation architecture/runbook notes and corrected the README/`reamdme.txt` naming mismatch with a
+  compatibility pointer.
+
+Tests/checks:
+- Added API health, worker health, and shared Zod contract tests.
+- `pnpm install --frozen-lockfile` passed against the generated lockfile.
+- `pnpm verify` passed: Prettier check, ESLint, 10 workspace typechecks, 3 test files / 4 tests, and all
+  TypeScript package plus Vite production builds.
+- `docker compose -f docker/compose.yml config --quiet` passed and confirmed pinned image tags.
+- Manual smoke check passed while `pnpm dev` was running: web `/` returned 200, API `/health/live` returned 200,
+  and worker `/health/live` returned 200 with expected service/version payloads. Temporary processes were stopped.
+
+Manual actions required:
+- Install/use Node.js `22.15.0` baseline (Node 24.19.0 also verified), pnpm `11.19.0`, and Docker Desktop.
+- Copy `.env.example` to `.env`; keep all placeholder secrets local and replace them only with random local values.
+- Start `docker compose -f docker/compose.yml up -d` and manually open the web, API, worker, and Mailpit URLs in
+  `howToRun.txt`.
+
+Credentials/services:
+- No external credentials are needed.
+- Docker Desktop is required only for the local PostgreSQL, Redis, and Mailpit containers.
+
+Known limitations:
+- This phase has no Prisma schema/migrations, authentication, tenant model, queues, product APIs, execution
+  engine, dashboards, or real monitored requests.
+- Docker image pulls and clean-install checks depend on local Docker/network availability.
+- Docker Desktop was not running/accessible for container startup in this environment; Compose syntax was validated,
+  but container health remains a manual check.
+
+Next step:
+- Prompt 2 - PostgreSQL, Prisma schema, migrations, and shared contracts. Stop here until explicitly requested.
+
+Setup entry - documentation and scalable scaffold
+-------------------------------------------------
+What was done:
+- Read and consolidated the final API-testing production specification.
+- Identified the API-monitoring Sem 7 synopsis as aligned with the final specification.
+- Kept the utility-bill OCR PowerPoint outside the implementation scope because it describes a different product.
+- Created reamdme.txt with the complete product vision, scope, architecture, security, data model, APIs, testing strategy, deployment target, and definition of done.
+- Created howToRun.txt as the living setup/runbook with exact future commands, credential locations, secret-handling rules, and manual actions for each phase.
+- Created Prompts.txt with 15 ordered build prompts from foundation through final acceptance testing.
+- Created the scalable monorepo directory structure under apps/, packages/, infra/, docker/, docs/, tests/, scripts/, and .github/workflows/.
+- Added .gitignore rules for dependencies, build output, local environments, credentials, keys, logs, and temporary data.
+
+Tests/checks:
+- Documentation was reviewed from the supplied PDF and related Sem 7 synopsis files.
+- No application tests were run because no application has been implemented yet.
+- No dependencies were installed.
+- No database, Redis service, API, worker, frontend, or AWS resource was started.
+
+Manual actions required now:
+- Confirm that the API-monitoring PDF is the authoritative project baseline.
+- No credentials or service setup is required for this scaffold-only turn.
+- When ready, execute only Prompt 1 from Prompts.txt.
+
+Known limitations:
+- The repository is a scaffold; it is not runnable yet.
+- Package manifests, source files, Docker Compose implementation, Prisma schema, and CI workflows will be created by the numbered prompts.
+- The exact local ports and final dependency versions will be recorded after Prompt 1 implements them.
+
+Next step:
+- Prompt 1 - create the runnable monorepo foundation and local development baseline.

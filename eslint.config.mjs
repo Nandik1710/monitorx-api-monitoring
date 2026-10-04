@@ -32,7 +32,12 @@ export default tseslint.config(
     },
   },
   {
-    files: ["**/*.test.ts", "vitest.config.ts"],
+    files: [
+      "**/*.test.ts",
+      "**/*.test.tsx",
+      "**/prisma/seed.ts",
+      "vitest.config.ts",
+    ],
     extends: [tseslint.configs.disableTypeChecked],
   },
   {
@@ -40,6 +45,8 @@ export default tseslint.config(
     languageOptions: {
       globals: {
         console: "readonly",
+        process: "readonly",
+        URL: "readonly",
       },
     },
   },

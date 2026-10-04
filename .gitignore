@@ -35,6 +35,4 @@ docker/data/
 playwright-report/
 test-results/
 
-Prompts.txt
-howToRun.txt
-updates.txt
+

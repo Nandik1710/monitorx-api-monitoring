@@ -16,8 +16,16 @@ export function workerHealthPayload(version: string): WorkerHealthResponse {
   };
 }
 
-export function createHealthServer(version: string): Server {
+export function createHealthServer(
+  version: string,
+  metrics?: () => object,
+): Server {
   return createServer((request, response) => {
+    if (request.url === "/metrics" && metrics) {
+      response.writeHead(200, { "content-type": "application/json" });
+      response.end(JSON.stringify(metrics()));
+      return;
+    }
     if (request.url !== "/health/live" && request.url !== "/health/ready") {
       response.writeHead(404).end();
       return;

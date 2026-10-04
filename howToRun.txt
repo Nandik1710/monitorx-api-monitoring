@@ -1,0 +1,753 @@
+MONITOR-X HOW TO RUN AND MANUAL SETUP GUIDE
+============================================
+
+Purpose
+-------
+This is a living runbook. It must be updated after every numbered build prompt. Each update must record:
+- What was implemented.
+- Commands that now work.
+- Tests run and their result.
+- New environment variables or credentials.
+- Manual actions still required from the project owner.
+- The exact next step.
+
+Current state: Prompts 6-9 plus the desktop frontend redesign; stopped before Prompt 10
+--------------------------------------------
+The application now supports safe worker execution, asynchronous test/collection runs, recurring schedules,
+execution history and reliability dashboards. Saving a test still does not execute it. Incident automation,
+alert delivery and cloud deployment remain future phases. Use the frontend redesign section below for the
+current navigation; older phase entries describe the previous interface.
+
+Desktop frontend redesign - current start and check guide (2026-10-04)
+---------------------------------------------------------------------
+Theme: supplied blue VS Code surfaces with rose/red accents, Base UI/Rhea styling, Remix icons, bundled
+Source Code Pro and Source Serif 4. Dark first-visit default; use the top-right light/dark control.
+Target: laptop/desktop browsers at least 1024 CSS pixels wide. Earlier mobile-layout checks are historical.
+No new environment variables, credentials, migrations or Docker image changes are required.
+
+1. Stop the running apps with Ctrl+C before installation and Prisma generation. Keep your existing .env.
+   Node.js baseline 22.15.0, pnpm 11.19.0. If your pnpm launcher is different, replace each pnpm command below
+   with pnpm dlx pnpm@11.19.0 followed by the same arguments.
+       pnpm install --frozen-lockfile
+       docker compose -f docker/compose.yml up -d --wait
+       pnpm db:migrate
+       pnpm verify
+   Optional full backend regression: pnpm test:integration (with apps stopped).
+   If Prisma reports EPERM on query_engine-windows.dll.node, stop API/worker terminals, then retry.
+
+2. Start with pnpm dev. Open http://localhost:5173. API: 4000; worker: 4100; PostgreSQL: 5432;
+   Redis: 6379; Mailpit browser: http://localhost:8025; SMTP: 1025. Existing image versions remain
+   postgres:16.4-alpine, redis:7.4.1-alpine and axllent/mailpit:v1.21.8.
+   Register/verify using Mailpit, then sign in. Existing accounts/data still work.
+
+3. Workspaces -> create/choose workspace -> Projects -> create/choose project. Sidebar selectors keep
+   workspace/project context visible. Overview, Collections & tests, Execution history, Environments,
+   Team & access and Quick start are separate pages. Project settings is on the Overview page's tab bar.
+
+4. Environments -> New environment -> choose it. Save public variables separately from encrypted secrets.
+   Collections & tests -> New collection -> open it -> New API test. Each test editor has its own URL.
+   Fill the request, add a required assertion, choose an environment and Save test. Saving sends nothing.
+   Try editing then navigating away: Cancel keeps edits, Confirm discards them. Reload/close uses a browser
+   warning. Drafts are not persisted across session expiry, reload or development-server restarts.
+
+5. Reopen the saved test. Choose Run environment -> Run now. Use a PUBLIC target you own/are authorized to
+   monitor. Open the result link for details; the sidebar retains project context. Use Execution history
+   for filters, or Overview for metrics. Collection pages also have an expandable Run collection panel.
+   Private/local targets remain blocked by the worker. Do not disable protection for a demo.
+
+6. Scheduling remains in the saved editor's Schedule tab. Enable/save the test first, configure an
+   environment/cadence, then explicitly enable/save the schedule. Pause after checking it. Uptime needs
+   scheduled samples; no samples means No data. Automated incident/alert actions are NOT implemented yet.
+
+7. Check light/dark, keyboard Tab, browser Back/Forward and direct URL reload at 1024px or wider. Check a
+   Viewer account cannot create/edit/run tests or manage roles. API authorization remains in force.
+   Stop with Ctrl+C. Optional docker compose -f docker/compose.yml stop preserves your database volumes.
+
+New pinned frontend versions: React Router 7.18.4, Tailwind/@tailwindcss/vite 4.3.3, shadcn 4.21.1,
+Base UI 1.8.0, Remix icons 4.9.0, variable font packages 5.3.0, tw-animate-css 1.4.0. React 19.0.0 and
+Vite 6.0.7 remain unchanged. The theme CLI's Zod override is scoped to shadcn; API contracts are unchanged.
+See docs/architecture/frontend.md and the newest updates.txt entry for verification evidence/limitations.
+
+The repository guide is currently `README.txt`; the original setup documentation referred to `reamdme.txt`.
+`reamdme.txt` is now a compatibility pointer so both names are unambiguous.
+
+Current manual check
+--------------------
+1. Open `README.txt` (or its `reamdme.txt` pointer) and confirm that the API-monitoring specification is the intended project.
+2. Confirm Docker Desktop is available, then run the local service and health checks below.
+3. Confirm the directory structure under apps/, packages/, infra/, docker/, docs/, tests/, scripts/, and .github/.
+4. Do not place real credentials in this repository.
+
+Project authority
+-----------------
+Use Supporting Documents/Monitor-X_Final_Production_Specification.pdf as the implementation authority. The utility-bill OCR content in the legacy PowerPoint is not part of this API-monitoring build.
+
+Required local software for Prompt 1
+------------------------------------
+1. Node.js `22.15.0` or newer Node 22/24 LTS (the workspace requires `>=22.15.0 <25`).
+2. pnpm `11.19.0` (pinned by `package.json` and `packageManager`).
+3. Docker Desktop with Docker Compose support.
+4. Git, if source control is needed locally.
+5. An editor such as VS Code.
+
+Local services
+----------------------
+Docker Compose will provide:
+- PostgreSQL `16.4-alpine` on port 5432.
+- Redis `7.4.1-alpine` on port 6379.
+- Mailpit `v1.21.8` SMTP on port 1025 and web UI on port 8025.
+- Optional mock target API for healthy, slow, error, redirect, and large-response cases.
+
+Prompt 1 commands
+-------------------------------
+Run these from the repository root:
+
+    Copy-Item .env.example .env
+    pnpm install --frozen-lockfile
+    docker compose -f docker/compose.yml up -d
+    pnpm dev
+
+Development URLs:
+- Web shell: http://localhost:5173
+- API live/readiness: http://localhost:4000/health/live and http://localhost:4000/health/ready
+- Worker live/readiness: http://localhost:4100/health/live and http://localhost:4100/health/ready
+- Mailpit UI: http://localhost:8025
+- PostgreSQL: localhost:5432, database `monitorx`, user `monitorx`
+- Redis: localhost:6379
+
+The Compose PostgreSQL password is a local-only development value. Replace local placeholder secrets in `.env`
+with random values before later prompts; never reuse them outside local development.
+
+Prompt 1 verification commands
+------------------------------
+    pnpm format:check
+    pnpm lint
+    pnpm typecheck
+    pnpm test
+    pnpm build
+    pnpm verify
+
+`pnpm verify` runs formatting, linting, typechecking, tests, and builds. Docker service availability is checked
+manually with `docker compose -f docker/compose.yml ps`.
+
+Prompt 2 database commands
+--------------------------
+Run these from the repository root after Docker Desktop is running:
+
+    docker compose -f docker/compose.yml up -d postgres redis
+    pnpm db:generate
+    pnpm db:migrate
+    pnpm db:seed
+    pnpm test:integration
+
+`pnpm db:migrate` applies committed migrations with `prisma migrate deploy`. `pnpm db:seed` is deterministic and
+safe to rerun; it creates only fake local fixtures. The integration suite checks PostgreSQL and Redis connectivity,
+a uniqueness constraint, explicit cross-tenant lookup scoping, and organization identifiers on organization-owned
+tables.
+
+Prompt 2 verification commands
+------------------------------
+    pnpm install --frozen-lockfile
+    pnpm verify
+    pnpm test:integration
+    docker compose -f docker/compose.yml ps
+
+The regular `pnpm verify` suite intentionally skips integration tests unless `RUN_INTEGRATION=true` is set. The
+separate `pnpm test:integration` command enables them.
+
+Credential and secret inventory
+-------------------------------
+Use separate values for local, staging, and production. The exact variable names below come from the production specification. Prompt 1 must create a non-secret .env.example without real values.
+
+Variable                         Service       Required purpose
+NODE_ENV                         API/worker    Environment name.
+APP_BASE_URL                     API           Web origin for links and CORS.
+API_BASE_URL                     API           Public API origin for the GitHub callback.
+VITE_API_BASE_URL                Web           Public API origin (apps/web/.env.local).
+DATABASE_URL                     API/worker    PostgreSQL connection string.
+REDIS_URL                        API/worker    Redis endpoint and credentials.
+JWT/SESSION_SECRET               Reserved      Not used: Prompt 3 uses opaque tokens with PostgreSQL hashes.
+MAILPIT_SMTP_URL                 API           Local smtp://localhost:1025; remote SMTP must support TLS.
+AUTH_MAIL_FROM                   API           Auth sender; local default no-reply@monitorx.local.
+GITHUB_OAUTH_ENABLED             API           false by default; true requires both GitHub credentials.
+KMS_KEY_ID                       API/worker    AWS KMS key reference for protected encryption.
+TENANT_ENCRYPTION_CONTEXT        API/worker    Tenant-secret encryption namespace/context.
+GITHUB_CLIENT_ID                 API           Optional GitHub OAuth identifier.
+GITHUB_CLIENT_SECRET             API           Optional GitHub OAuth secret.
+EMAIL_FROM                       alert worker  Sender identity for email alerts.
+SES_REGION / provider key        alert worker  Email provider configuration.
+OTEL_EXPORTER_*                  API/worker    Optional OpenTelemetry exporter settings.
+LOG_LEVEL                        all           Structured log level.
+MAX_RESPONSE_BYTES               worker        Outbound response safety limit; default 1 MB hard cap.
+DEFAULT_TEST_TIMEOUT_MS          worker        Default outbound timeout; target default 10 seconds.
+WORKER_CONCURRENCY               worker        Per-task worker concurrency.
+SSRF_ALLOW_PRIVATE_NETWORKS      worker        Must remain false in public SaaS mode.
+
+Additional provider credentials that may be added by implementation:
+- Slack webhook/app credentials for Slack notification channels.
+- Email provider credentials if SES is not used.
+- Generic webhook signing secret per webhook channel.
+- AWS access is preferably configured through GitHub Actions OIDC/role assumption, not long-lived keys in .env.
+
+Where credentials belong
+-------------------------
+Local:
+1. Copy the generated .env.example to the documented local env filename.
+2. Put local-only values there.
+3. Keep the file ignored by Git.
+4. Use Mailpit for email during development.
+5. Use local Postgres and Redis from Docker Compose.
+
+Staging/production:
+1. Put infrastructure secrets in AWS Secrets Manager.
+2. Protect encryption keys with AWS KMS.
+3. Inject values into ECS tasks through the task definition/secret reference.
+4. Store tenant environment secrets encrypted by the application; never return them after save.
+5. Use GitHub Actions OIDC to deploy; do not commit AWS keys.
+6. Configure Slack/email/webhook secrets through the application settings or the secret manager according to the implemented design.
+
+Never commit:
+- .env files containing values.
+- Database passwords.
+- Redis passwords.
+- OAuth client secrets.
+- JWT/session secrets.
+- API keys or bearer tokens.
+- Slack/webhook URLs or signing secrets.
+- AWS access keys, private keys, certificates, or KMS material.
+
+Manual actions by build phase
+-----------------------------
+Prompt 1 - foundation:
+- Install Node.js `22.15.0`, pnpm `11.19.0`, Docker Desktop, and Git if missing.
+- Run the generated install and Compose commands.
+- Copy .env.example and set only local development values.
+
+Prompt 2 - database/contracts:
+- Start Postgres and Redis.
+- Run migrations and seed commands.
+- Verify the generated Prisma schema and local database connection.
+
+Prompt 3 - authentication:
+- Follow the Prompt 3 setup below; no signing secret or external provider is needed locally.
+- If testing email verification/password reset, open Mailpit at the documented URL.
+- Optional: create GitHub OAuth app and add callback credentials only if OAuth is enabled.
+
+Prompt 4 - tenancy/secrets:
+- Create local encryption configuration as documented by the implementation.
+- Confirm test secrets are fake values.
+- Do not use production credentials in local tests.
+
+Prompt 5 - test builder:
+- Create a demo target API or use the mock service created by the prompt.
+- Add a non-production environment and a sample collection/test through the UI/API.
+
+Prompt 6 - execution engine:
+- Run healthy, failing, timeout, redirect, large-body, and blocked-private-target fixtures.
+- Confirm redacted output manually.
+
+Prompt 7 - asynchronous runs:
+- Start API and worker processes.
+- Trigger a manual run and verify the queued/running/completed events in the UI.
+
+Prompt 8 - scheduling:
+- Create a short-interval schedule in a local environment.
+- Restart Redis and verify schedules are rebuilt from PostgreSQL.
+
+Prompt 9 - dashboard/history:
+- Run enough healthy, degraded, and failed fixtures to populate charts.
+- Check filtering, pagination, latency percentiles, and responsive UI.
+
+Prompt 10 - incidents/alerts:
+- Configure Mailpit, a test Slack webhook, or a local signed webhook endpoint.
+- Trigger an incident and recovery; verify deduplication, retry history, and resolution.
+
+Prompt 11 - OpenAPI import:
+- Provide a safe local OpenAPI JSON/YAML fixture.
+- Confirm imported tests are drafts and production schedules are disabled.
+
+Prompt 12 - CLI/automation/audit:
+- Create a scoped API key in the UI and save it only in a local secret store/CI secret.
+- Run the CLI against a staging-like project.
+- Never paste a real key into source code or committed documentation.
+
+Prompt 13 - hardening/observability:
+- Review generated security settings, logs, tracing, redaction, accessibility, and rate limits.
+- Supply provider configuration only for a controlled test environment.
+
+Prompt 14 - deployment:
+- Configure AWS account, region, domain, Route 53, ACM, ECR, Secrets Manager, KMS, RDS, Redis, S3, CloudFront, WAF, ECS, and CloudWatch as required by the generated CDK configuration.
+- Set a budget alarm before launching managed resources.
+- Approve any AWS cost before deployment.
+
+Prompt 15 - final verification:
+- Run the full quality gate and acceptance checklist.
+- Supply a safe demo domain and demo targets.
+- Verify HTTPS, backup/restore, rollback, smoke tests, screenshots, and README/runbook completeness.
+
+Living update protocol
+----------------------
+After every numbered prompt, Codex must update this file and updates.txt, then report:
+1. Implemented features.
+2. Tests and commands run.
+3. Manual actions required from you.
+4. New credentials or services required.
+5. Known limitations and the next prompt.
+
+Prompt 1 status
+---------------
+- Implemented the workspace manifests, strict TypeScript configuration, ESLint, Prettier, Vitest, environment
+  examples, pinned Compose services, API/worker health entrypoints, web shell, package boundaries, CI workflow,
+  foundation tests, and local runbook.
+- No credentials are required for the foundation health checks.
+- Exact next step: Prompt 2 - PostgreSQL, Prisma schema, migrations, and shared contracts.
+
+Prompt 2 status
+---------------
+- Migration: `packages/db/prisma/migrations/20260831112514_init/migration.sql`.
+- Schema: `packages/db/prisma/schema.prisma` with all requested entities, enums, timestamps, retention fields,
+  uniqueness constraints, foreign keys, and organization-scoped indexes.
+- Seed: `packages/db/prisma/seed.ts` with fake deterministic data across the relational model.
+- Shared contracts: `packages/contracts/src` contains strict organization/project/collection/environment/test/schedule
+  inputs, pagination, and typed error envelopes.
+- Manual action: keep PostgreSQL and Redis running when using `pnpm test:integration`; do not use seeded local values
+  outside development.
+- Exact next step: Prompt 3 - authentication and session security.
+
+Prompt 3 - exact local authentication setup
+-------------------------------------------
+Versions: Node.js 22.15.0 baseline, pnpm 11.19.0 workspace pin, Prisma/Client 6.1.0, Zod 3.24.1,
+Express 5.1.0, Nodemailer 10.0.13, React 19.0.0, Vite 6.0.7. Compose versions and ports above are unchanged;
+PostgreSQL, Redis and Mailpit are now bound to 127.0.0.1 only, not your local network.
+
+From the repository root in PowerShell:
+
+    if (-not (Test-Path .env)) { Copy-Item .env.example .env }
+    pnpm install --frozen-lockfile
+    docker compose -f docker/compose.yml up -d --wait
+    pnpm db:migrate
+    pnpm db:generate
+    pnpm verify
+    pnpm test:integration
+    pnpm dev
+
+Do not overwrite an existing .env. Compare it with .env.example and add only missing settings:
+- DATABASE_URL points to your local Compose database (use the local-only example, not a production URL).
+- APP_BASE_URL=http://localhost:5173 (exact origin; no trailing slash).
+- API_BASE_URL=http://localhost:4000 (exact origin; no trailing slash).
+- MAILPIT_SMTP_URL=smtp://localhost:1025
+- AUTH_MAIL_FROM=no-reply@monitorx.local
+- GITHUB_OAUTH_ENABLED=false
+
+The API and root database commands load repository-root .env without overriding existing process environment
+variables. Database URL is required at API startup. The frontend defaults to http://localhost:4000; to change it,
+copy apps/web/.env.example to apps/web/.env.local and set VITE_API_BASE_URL, then restart Vite. Do not put secrets
+in any VITE_* variable. The root dev/test/typecheck scripts generate Prisma and build shared dependencies first.
+The seed command is optional; seeded users have fake unusable password hashes, so create your own account.
+
+Manual browser verification (Chrome on localhost)
+--------------------------------------------------
+1. Open http://localhost:5173 and choose Create account. Enter a test email/name and a 12-128 character password.
+2. Open http://localhost:8025, open that address's verification email, follow its link and press Verify email.
+3. Sign in on the web page. The page should show your name with Renew session and Sign out controls.
+4. Press Renew session once, then Sign out. You should return to the sign-in form.
+5. Choose Request password reset, enter the same email, and open the reset message in Mailpit. Follow its link,
+   set a new password and sign in again. The old password and consumed link must no longer work.
+6. Optionally inspect cookie flags in browser developer tools: Secure, HttpOnly, SameSite=Lax, Path=/, no Domain.
+   Never copy token values into issues, chat, logs or screenshots. No auth tokens are stored in localStorage.
+
+Always use localhost for this HTTP development setup, not a LAN address. Browser Secure-cookie exceptions are
+localhost-specific; use HTTPS for any non-localhost deployment. Production mode rejects HTTP origins. Frontend
+and API must be same-site for SameSite=Lax sessions. APP_BASE_URL must match the browser origin exactly.
+
+API endpoints: /api/v1/auth/{csrf,config,register,login,me,refresh,logout,resend-verification,forgot-password,
+verify-email,reset-password,github,github/callback}. See docs/architecture/authentication.md for methods/contracts.
+JSON mutations require Origin: http://localhost:5173, X-CSRF-Token from GET /csrf, and the matching cookie jar.
+Use browser forms for local manual checks; do not paste session or email-token values into shell history.
+
+Optional GitHub OAuth (not required for local use)
+--------------------------------------------------
+Create a GitHub OAuth App in GitHub Settings > Developer settings > OAuth Apps:
+- Homepage URL: http://localhost:5173
+- Authorization callback URL: http://localhost:4000/api/v1/auth/github/callback
+Put its real client ID and client secret only in your untracked root .env as GITHUB_CLIENT_ID and
+GITHUB_CLIENT_SECRET. Set GITHUB_OAUTH_ENABLED=true, restart the API, and choose Continue with GitHub.
+No separate callback environment variable exists: the API derives it from API_BASE_URL. If changing ports or
+origins, update the registered GitHub callback too. Never add these credentials to committed examples.
+Use a GitHub account with a verified primary email. An existing password account with the same email is deliberately
+not auto-linked; use password login for that account. The default disabled setting needs no GitHub credentials.
+
+Security defaults and limitations
+---------------------------------
+- Access sessions last 15 minutes; rotating refresh families expire absolutely after 7 days. Clients must serialize
+  refreshes across tabs; replay/lost-response retries invalidate the family and require sign-in again.
+- Verification links last 24 hours, reset links 30 minutes, OAuth state 10 minutes. Resends invalidate older links.
+- Failed logins back off from 60 seconds after 5 failures, doubling to a 1-hour cap. API quotas are documented in
+  docs/architecture/authentication.md; wait for their window if manual tests trigger 429 responses.
+- Each scrypt operation needs about 128 MiB; size API memory and upstream concurrency limits before production.
+- Historical Prompt 3 boundary: organization authorization was added in Prompt 4 below.
+- Auth emails are sent synchronously. Failed delivery is audited; resend when SMTP is restored. Durable mail retry
+  and automatic expired-record cleanup are not part of this phase.
+- trust proxy remains false. Deliberately configure trusted proxy addresses at deployment; never trust arbitrary
+  forwarded headers. Existing health endpoints remain process health, not a full auth-dependency readiness probe.
+- Real GitHub-provider sign-in requires your optional credentials; local tests use controlled provider responses.
+- howToRun.txt and updates.txt are currently ignored by your existing .gitignore. Their local edits are preserved;
+  review that ignore policy yourself if you want these living documents included in version control.
+
+Prompt 3 verified results (2026-10-04)
+--------------------------------------
+- Node.js 22.15.0 and pinned pnpm 11.19.0: frozen-lockfile install passed.
+- pnpm verify: formatting, lint, all typechecks, 14 regular tests and all builds passed.
+- pnpm test:integration: 17 tests passed with actual PostgreSQL, Redis and Mailpit.
+- Both migrations applied in isolated fresh schemas; the development migration/schema comparison showed no drift.
+- Chrome manual flow passed: register, Mailpit verification, login, renew, logout, reset, login with new password.
+- Temporary browser fixture data and app processes were cleaned up. Docker services are still running.
+- Optional real GitHub-provider sign-in remains a manual credentialed check; it is not needed for password login.
+
+Prompt 3 handed off to Prompt 4; the current instructions follow.
+
+Prompt 4 - local setup and manual verification (2026-10-04)
+----------------------------------------------------------
+No new external credentials or paid services are required. Node.js 22.15.0, pnpm 11.19.0, Prisma 6.1.0,
+React 19.0.0 and Zod 3.24.1 remain unchanged. PostgreSQL 16.4-alpine, Redis 7.4.1-alpine and Mailpit v1.21.8
+remain pinned. Ports: web 5173, API 4000, worker health 4100, PostgreSQL 5432, Redis 6379, Mailpit SMTP 1025,
+Mailpit inbox 8025. Use localhost, not a LAN hostname, for local secure cookies.
+
+1. Open Docker Desktop. Open PowerShell in this repository. Stop any previous pnpm dev with Ctrl+C first:
+   on Windows a running API holds Prisma's native driver open and can block generation with EPERM.
+
+2. Preserve your existing .env; create it only if missing, then install and start the local containers:
+
+       if (-not (Test-Path .env)) { Copy-Item .env.example .env }
+       pnpm install --frozen-lockfile
+       docker compose -f docker/compose.yml up -d --wait
+
+   Use pnpm 11.19.0. If your pnpm launcher is a different version, use `pnpm dlx pnpm@11.19.0 <command>`
+   for the commands here (for example `pnpm dlx pnpm@11.19.0 verify`). Do not overwrite existing config.
+
+3. Initialize the private local encryption key, then apply the additive database migration:
+
+       pnpm secrets:init
+       pnpm db:migrate
+       pnpm db:generate
+
+   secrets:init saves a fresh random 32-byte key only in the untracked root .env and never prints it.
+   Existing TENANT_ENCRYPTION_KEYS is never replaced. Protect and securely back up .env outside Git;
+   losing keys means losing access to encrypted data. Keep TENANT_KEY_PROVIDER=local,
+   TENANT_ENCRYPTION_KEY_VERSION=1 for first setup, and keep TENANT_ENCRYPTION_CONTEXT stable.
+   The old TENANT_ENCRYPTION_KEY placeholder is unused. Do not copy key values into chat or screenshots.
+   Without keys, ordinary workspace operations work but secret writes/rotation fail safely.
+   An invalid configured key prevents startup. Do not use this local setup command for production.
+
+4. Check everything before starting the apps:
+
+       pnpm verify
+       pnpm test:integration
+       pnpm dev
+
+   verify checks formatting, lint, strict types, regular tests and builds. Integration tests need all three
+   Docker services, use fresh isolated local database schemas and clean up their own fixtures.
+   The optional `pnpm db:seed` creates fake fixtures, not a usable login. Its placeholder ciphertext is
+   intentionally not decryptable; use your own registered account and workspace for the following checks.
+
+5. Open http://localhost:5173. Register a test account if needed; verify its email using http://localhost:8025,
+   then sign in. Under Workspaces and settings, expand Create a workspace. Enter a name and lowercase-hyphen
+   slug. You should become its OWNER. The Workspace selector switches between only your memberships.
+
+6. Expand Create project, create one, then select it in Project. Expand Create environment, create one,
+   then select it in Environment. In Non-secret variables (JSON), try {"BASE_URL":"https://example.test"}.
+   Save environment. These values are visible to all members: never put passwords or tokens in this box.
+
+7. Add a Secret name such as API_TOKEN and a fake test value in New secret value (write-only). Press Save secret.
+   The input clears and the saved entry shows only a fixed mask and key version. Refresh/reselect the workspace,
+   project and environment: there is no reveal button and no saved plaintext response. Replacing an existing
+   secret asks for confirmation. Rotate re-encrypts with the configured current version, without showing it.
+
+8. Invite a second test email as VIEWER. Open its invitation in Mailpit. Sign in as that address (register and
+   verify it first if necessary), then reopen the invitation link and press Accept invitation. The URL fragment
+   disappears. Select the shared workspace/project/environment: public variables and masked secret metadata
+   are readable, but project/environment/secret editing and team-management controls are absent.
+   Acceptance needs the exact verified invited address, an unexpired unused link and a still-authorized inviter.
+   Links expire after seven days; sending a new invitation invalidates the previous link.
+
+9. Sign back in as Owner. Change the second user's role, then have that user refresh their workspace.
+   ADMIN may manage projects/environments/secrets and Editor/Viewer members, but cannot grant Owner/Admin
+   or modify privileged members. EDITOR and VIEWER are read-only for this phase's settings, per the PDF.
+   The last active verified Owner cannot be removed or demoted. Backend checks apply even if UI is bypassed.
+
+10. Rename the disposable project, edit the environment, and test deleting a secret or environment using the
+    confirmation dialog. Delete the environment before its project: non-empty projects and referenced
+    environments are deliberately protected. There is no organization-delete endpoint in this phase.
+    Stop apps with Ctrl+C. `docker compose -f docker/compose.yml stop` stops containers without deleting data.
+    Do not use down -v unless you explicitly intend to destroy local data.
+
+Rotation and deployment notes
+------------------------------
+- secrets:init does not rotate keys. Privately add a new random key/version to TENANT_ENCRYPTION_KEYS, retain
+  all old keys, select the new TENANT_ENCRYPTION_KEY_VERSION and restart the API. Use each secret's Rotate
+  action; new writes automatically use the selected version. Retain old keys until live data and retained
+  backups no longer require them. Never change a key's bytes under an existing version.
+- KMS is an injectable provider interface only. The shipped entrypoint has no AWS adapter: setting
+  TENANT_KEY_PROVIDER=kms with KMS_KEY_ID intentionally fails closed until an adapter is wired for deployment.
+- The basic settings UI shows up to 100 entries; API lists support page/limit. Organization rename is API-only.
+- Invitation SMTP is synchronous; failed delivery is audited and that token revoked. Resend after SMTP recovery.
+  Automatic retry, expired-record cleanup, bulk rotation and an audit viewer are not implemented in this phase.
+- See docs/architecture/workspaces.md for endpoint contracts, role matrix, crypto format and authorization.
+- Both living .txt documents remain ignored by the existing .gitignore policy; no commit or deployment was made.
+
+Prompt 4 verification results
+-----------------------------
+- Frozen-lockfile installation with pinned pnpm 11.19.0 passed on Node.js 22.15.0.
+- pnpm verify passed formatting, lint, strict typechecks, 19 regular tests and all production builds.
+- pnpm test:integration passed 35 tests, including 18 workspace authorization/encryption tests and real SMTP.
+- All three migrations applied in fresh test schemas; the local database/schema comparison had no drift.
+- Chrome checked workspace/project/environment creation, saved-secret masking/input clearing, invitation
+  acceptance and Viewer read-only controls. Database ciphertext/audit inspection passed. Broader role and
+  key-version rotation checks were automated integration tests, not a claimed full browser rotation exercise.
+- Disposable browser fixtures were removed and app processes stopped. Docker services remain running.
+- Your .env was preserved: run pnpm secrets:init yourself before saving persistent local secrets.
+
+Next: Prompt 5, only after explicitly requested. No Prompt 5 features were started.
+
+
+Prompt 5 - local setup and manual verification (2026-10-04)
+==========================================================
+What you can now do
+-------------------
+Create collections inside a project, then create, view, edit and delete reusable API test definitions.
+Configure requests, body data, authentication secret references, assertions, tags and an environment.
+Preview public variables with secrets masked. This is a configuration builder, not a running monitor yet.
+
+1. Open a terminal in this repository. Use Node.js 22.15.0 (or supported Node 22/24 LTS) and pnpm 11.19.0.
+   Start Docker Desktop. Stop an existing pnpm dev process with Ctrl+C before installing/generating Prisma
+   on Windows; otherwise its native driver can be locked. Preserve your existing root .env.
+
+       if (-not (Test-Path .env)) { Copy-Item .env.example .env }
+       pnpm install --frozen-lockfile
+       docker compose -f docker/compose.yml up -d --wait
+       pnpm db:migrate
+       pnpm db:generate
+       pnpm verify
+       pnpm test:integration
+
+   If your pnpm launcher is not 11.19.0, replace each pnpm command with
+   `pnpm dlx pnpm@11.19.0 <command>` (for example `pnpm dlx pnpm@11.19.0 verify`).
+   The new migration is 20261004020000_test_builder; all four migrations apply on a fresh database.
+   No new environment variables or external credentials are required in this phase.
+
+2. If you want to save fake local secrets and have not initialized encryption, run `pnpm secrets:init`.
+   This preserves an existing private key ring and never prints it. Do not share or commit .env.
+   Then start the apps:
+
+       pnpm dev
+
+   Web: http://localhost:5173; API: http://localhost:4000; worker health: http://localhost:4100.
+   API and worker offer /health/live and /health/ready. Mailpit: http://localhost:8025 (SMTP 1025).
+   PostgreSQL 16.4-alpine uses 5432; Redis 7.4.1-alpine uses 6379; Mailpit is v1.21.8.
+
+3. Register/verify through Mailpit and sign in, or use your existing account. Create/select your own
+   workspace and project following Prompt 4 above. Create a Development environment with public variables:
+
+       {"BASE_URL":"https://example.test"}
+
+   These variables are public to workspace members. Optional: store API_TOKEN with a fake value through
+   the write-only secret form. Never put credentials into public variables, names, bodies or ordinary rows.
+   Seed fixtures are optional, not a usable login, and their placeholder ciphertext is intentionally fake.
+
+4. Under the selected project, find Collections and API tests. Expand Create collection, enter Smoke Checks
+   and a description, then press Create collection. Choose it from Collection. Expand Edit collection to
+   rename it or change its description. Collections and tests have Previous/Next pagination controls.
+
+5. Press New API test. Set Test name to Health check; leave Test enabled unchecked for a disabled draft.
+   Request tab: method GET, URL template {{BASE_URL}}/health, timeout 10000, redirects off, authentication NONE.
+   Optional query/header rows each have enabled and sensitive flags. Do not enter a literal credential.
+
+6. Assertions tab: Add assertion. Keep type status, severity REQUIRED, expected 200. Other available types
+   configure latency, headers, JSON paths/comparisons, text, regex and XPath. They are stored, not evaluated.
+   Environment tab: select Development and press Preview variables safely. Confirm the URL is
+   https://example.test/health. No target request should occur. Click Save test, then Edit Health check:
+   the saved method, URL, assertion, tags and environment should still be there.
+
+7. Optional masked-auth check: if API_TOKEN was saved in step 3, choose BEARER in Request and use
+   {{API_TOKEN}} as Bearer secret reference. Preview again: the token must be masked, not revealed.
+   Missing references, literal auth credentials and references to public variables as credentials fail.
+   If you created an environment after the library loaded, press Refresh library before opening the editor.
+
+8. Optional body check: change method to POST, then Body mode to JSON and enter {"message":"hello"}.
+   RAW, XML and FORM_URLENCODED modes are also available. GET/HEAD cannot have bodies. Save and reopen.
+   Try file:///unsafe as a URL: Save must show a field-oriented error. Restore the valid HTTP(S) URL.
+   In two tabs, edit the same test: the second stale save must fail with a reload message, not overwrite it.
+
+9. Permission check: an invited verified EDITOR may manage collections/tests but cannot manage environment
+   secrets or projects. A VIEWER may open definitions and masked previews but cannot save/delete them.
+   Refresh/reselect the workspace after a role change. Cross-workspace IDs remain blocked by the backend.
+
+10. Schedule and History are explicitly labelled placeholders. Enabled does not create a schedule.
+    Delete only disposable tests using confirmation, then delete their empty collection. Tests with future
+    execution/schedule/incident records are protected; disable instead. Close editor discards unsaved edits.
+    Stop the apps with Ctrl+C; stop Docker services with `docker compose -f docker/compose.yml stop` if wanted.
+    Do not use down -v unless intentionally destroying local data.
+
+Limits and current boundaries
+-----------------------------
+- Body: 256 KiB; header definitions: 16 KiB; 100 rows per group; 100 assertions; 50 tags; URL: 2048 characters.
+- Timeout: 100-30000 ms, additionally bounded by the workspace's database-configured ceiling; redirects 0-3.
+- Uppercase {{NAME}} substitution is single-pass, non-recursive and bounded. Preview reads secret names only.
+- Environment chooser shows the first 100 project environments. Collection moves are API-only, same project.
+- No outbound monitoring, execution engine, assertion evaluation, queues, schedules, alerts or real history yet.
+- URL syntax validation is not SSRF protection; actual destination/DNS/redirect checks belong to Prompt 6.
+- Audit records retain revision and changed field names, not credentials/full request snapshots or rollback UI.
+- See docs/architecture/test-builder.md for routes, contracts, authorization and detailed boundaries.
+
+Prompt 5 verification results
+-----------------------------
+- Frozen-lockfile install and pnpm verify passed: formatting, lint, strict types, 64 regular/component tests
+  and all builds. pnpm test:integration passed 47 tests. All four migrations applied in fresh isolated test
+  schemas; the local Prisma/database comparison showed no drift. Details are in the Prompt 5 entry in updates.txt.
+- Live browser verified collection creation, secret-masked preview, saving/reopening the request, and changing
+  an assertion from 200 to 201 with persisted revision 2. Desktop and 390px layouts were inspected; no horizontal
+  overflow at 390px or application console errors were observed during the check.
+- Disposable browser workspace/account were permanently removed after verification; no user records or .env
+  were changed. App/browser processes stopped. Docker services remain running.
+
+Next: Prompt 6, only when explicitly requested. Prompt 5 does not start it automatically.
+
+Prompt 6 - safe execution engine (2026-10-04)
+============================================
+The worker-only engine now normalizes requests, checks public destinations, pins DNS addresses, validates
+TLS, bounds HTTP/decoded bodies, evaluates assertions and produces redacted results. No API run button is
+introduced in this phase. No additional credentials or environment variables are required.
+
+Manual verification: stop dev, run `pnpm install --frozen-lockfile`, then `pnpm verify`. For focused fixture
+checks run `pnpm exec vitest run tests/unit/test-engine.test.ts tests/integration/engine-transport.integration.test.ts`.
+The 35 focused checks and full verify (99 regular/transport tests, lint, types, builds) passed. Tests use
+disposable local HTTP sockets, not external services. Do not weaken the public-only policy to monitor localhost.
+
+Limits: cross-origin redirects are refused; JSONPath/XPath support bounded child paths, not arbitrary expressions.
+RE2 patterns cannot use backreferences/lookarounds; regex response input is capped at 64 KiB. Non-JSON previews
+are omitted, while text/XML assertions still run. Optional JSON Schema assertions are deferred. See
+docs/architecture/execution-engine.md. Prompt 7 follows only because the user explicitly requested phases 6-9.
+
+Prompt 7 - asynchronous manual and collection runs (2026-10-04)
+================================================================
+Install pinned dependencies, start Docker Compose, apply `pnpm db:migrate`, then run `pnpm verify` and
+`pnpm test:integration` with dev stopped. Run `pnpm dev` afterwards. API 4000, worker 4100, web 5173 and
+database/Redis/Mailpit ports are unchanged. Worker now reads root .env: DATABASE_URL, REDIS_URL and the same
+private tenant key ring as the API. WORKER_CONCURRENCY defaults to 5. No new external credentials are needed.
+
+Manual flow:
+1. Sign in, select workspace/project/collection, open a saved test and choose Run environment explicitly.
+2. Press Run now. The returned ID represents a PostgreSQL-backed run; queued/running/final status updates
+   appear without waiting for the target in the API. Only saved configuration is used, not unsaved edits.
+3. Use a public API you own or are authorized to check. A localhost/private target must fail configuration
+   validation; there is no local private-target bypass. A failed assertion must stay FAILED, not be retried.
+4. Select a collection to run all its saved tests with parallelism 1-5 (maximum 100 tests per collection run).
+5. Cancel queued/running work. Queued work stops; a sent request cannot be undone. Viewer cannot run/cancel.
+6. Stop/restart only the worker: queued runs survive in PostgreSQL. Redis queues are rebuilt automatically.
+   Never flush shared Redis to test this; automated tests use random disposable queue namespaces.
+
+Checks: 101 regular/transport/component tests and all verify steps passed; new run integration tests cover
+snapshot immutability, duplicate delivery, persistence retry, worker interruption, real BullMQ, cancellation,
+collection limits and authenticated/revoked live events. Full integration checkpoint results are in updates.txt.
+Limitations: interrupted claims become UNKNOWN rather than silently repeating external side effects. Alerts
+and imports queues are reserved, without their later-phase processors. History/dashboard and schedules are
+not yet introduced at this checkpoint. See docs/architecture/asynchronous-runs.md. Next: authorized Prompt 8.
+
+Prompt 8 - schedules, reconstruction and shared limits (2026-10-04)
+===================================================================
+Stop dev, install locked dependencies, apply `pnpm db:migrate`, run `pnpm verify` and `pnpm test:integration`,
+then `pnpm dev`. Migration 20261004040000_scheduling adds schedule fields, unique logical slots and admission
+indexes. No new credentials or required environment values. Internal worker metrics: http://localhost:4100/metrics.
+
+Manual flow:
+1. Use a test against a public API you own/are authorized to monitor. Enable the test and Save test.
+2. Reopen it, select Schedule, choose an environment and 1/5/10/15/30/60-minute interval or hourly/daily cadence.
+   Use UTC or an IANA zone such as Asia/Kolkata. Set hour/minute for calendar cadence. Schedule defaults off.
+3. Check Schedule enabled and Save schedule. The worker queues upcoming slots and shows the next unqueued
+   slot timestamp. Wait for the selected cadence; do not expect an enabled test alone to create a schedule.
+4. Pause schedule: queued slots are cancelled, and no paused slots count as uptime. Resume creates a future
+   slot without replaying the paused period. Existing running requests cannot be undone by pausing.
+5. Add maintenance JSON using UTC start/end timestamps, for example an interval covering the next few minutes.
+   Save schedule. Slots in that half-open window are skipped with PAUSED health. Clear windows afterwards.
+6. Stop/restart workers to check reconstruction. Do not manually flush shared Redis; automated integration
+   tests remove only random disposable queue namespaces and rebuild them from PostgreSQL.
+
+Limits: global 20, organization 3, target hostname 2 simultaneous runs, plus collection parallelism 1-5.
+Optional Organization.executionRateLimitPerMinute is trusted database configuration (null default), not a UI
+setting. Quota deferral caps at 30 seconds plus jitter. Scheduling catches up one overdue slot, not an unlimited
+backlog. Incident thresholds are stored only until Prompt 10. Maintenance is absolute UTC windows, not recurring
+weekly rules. Legacy schedules lacking an environment/creator do not auto-run. See docs/architecture/scheduling.md.
+
+Checkpoint: verify passed 112 regular/transport/component checks, lint, types and builds. Full integration passed
+62 tests; an additional API authorization case is recorded with the final Prompt 8 results in updates.txt.
+Database/schema diff showed no drift. Next: Prompt 9, already explicitly authorized by the current request.
+
+Prompt 9 - final local setup and dashboard verification (2026-10-04)
+=================================================================
+Prerequisites: Node.js 22.15.0 and pnpm 11.19.0; Docker Desktop running. Existing pinned PostgreSQL/Redis/
+Mailpit images and ports are unchanged. All Prompts 6, 7, 8, 9 were executed in order. Stop here: no Prompt 10.
+
+1. Open PowerShell in this repository. Stop any old app processes with Ctrl+C before generating Prisma.
+   If root .env does not exist, copy .env.example to .env, then privately edit the local configuration.
+   Do not overwrite an existing .env. The API and worker share that root configuration.
+       pnpm install --frozen-lockfile
+       docker compose -f docker/compose.yml up -d --wait
+       pnpm db:migrate
+   Seven migrations now exist; the newest adds tenant/time indexes for history. No new credentials are needed.
+   For fake encrypted credentials, run pnpm secrets:init once if not already initialized. Never use real secrets
+   in public variables or ordinary request fields. Use encrypted environment secrets and template references.
+   If the installed pnpm launcher is a different version, replace each pnpm command with pnpm dlx pnpm@11.19.0.
+
+2. With the apps STOPPED, run these commands sequentially (not in parallel on Windows):
+       pnpm verify
+       pnpm test:integration
+   Prisma's Windows native engine can be locked by a running app or integration suite. Stop that process and
+   retry; do not delete the database or node_modules to work around a file lock.
+
+3. Start the apps:
+       pnpm dev
+   Web http://localhost:5173; API http://localhost:4000; worker http://localhost:4100.
+   API/worker /health/live and /health/ready; internal worker counters /metrics on port 4100.
+   Mailpit http://localhost:8025, SMTP 1025; PostgreSQL 5432, Redis 6379. Keep these local-only.
+
+4. Sign in with a verified account (register and open the verification message in Mailpit if needed).
+   Choose/create a workspace, project, environment and collection. Save an API test targeting a PUBLIC API
+   that you own or have permission to monitor. Add a required HTTP-status assertion. Saving sends nothing.
+
+5. Choose the Run environment, then Run now on the saved test or collection. Expect an immediate queued ID,
+   live progress (with polling fallback) and a final status. Click the execution ID for request metadata,
+   response preview, HTTP status, timing, classified error and individual assertions. Expand an assertion
+   to compare expected/actual values. Copy controls copy only the redacted view.
+   A private/local address is intentionally blocked; do NOT disable SSRF protection for a demo.
+
+6. Use Open project dashboard and history or Open collection dashboard and history. Select 24 hours,
+   7 days or 30 days. Refresh dashboard/history to see new results. Apply status, kind, local time range,
+   environment UUID or test-tag filters; use Previous/Next executions for pagination. Test History also
+   opens from the saved test editor. Deep links require the same signed-in tenant membership.
+
+7. For scheduled samples, enable/save the test and configure its Schedule tab: choose environment and cadence,
+   enable the schedule and save. Wait for the interval, refresh the dashboard, then pause the schedule when
+   finished. A disabled/paused test is PAUSED; missing or stale data is UNKNOWN. The dashboard shows sample-
+   based scheduled uptime separately from all-run pass rate. No scheduled samples means No data, not 100%.
+   Failed assertions and slow checks populate error/slowest/degraded lists as appropriate.
+
+8. Check on a narrow browser width. Status always has text/symbols, and history tables scroll horizontally
+   inside their container. A Viewer can inspect results but cannot submit runs or change schedules.
+   Stop apps with Ctrl+C. Optionally docker compose -f docker/compose.yml stop; do not use down -v unless
+   intentionally deleting local data.
+
+Verified: pinned frozen-lockfile install; all seven migrations applied; no Prisma schema drift; full integration
+suite 66 passed. Browser checks used a disposable workspace, three synthetic scheduled outcomes (not real
+uptime evidence), and one real collection job rejected by the worker's private-address guard. Live updates,
+project/collection pages, range switching, failed filters, detail/assertions/copy, desktop and 390px layouts
+passed without browser errors or page overflow. The disposable account/workspace were removed, apps stopped,
+existing .env and user records preserved. Final pnpm verify passed 117 tests, formatting, lint, strict type
+checks and production builds. Five transport tests overlap with the 66-case integration suite.
+
+Limitations: automatic incidents/alerts are Prompt 10, not part of this work. The incident section reads existing
+records only. Physical retention cleanup is later; the API hides previews after 7 days and metadata after 90.
+Dashboards use direct indexed PostgreSQL aggregates for current scale, not large-scale rollups/load-tested SLAs.
+History tags use the current test definition; offset pagination is bounded. JSON Schema assertions remain optional
+and unimplemented; XPath/JSONPath/regex have the documented safe subsets. Cloud egress isolation is still required
+before deployment. No production/cloud deployment, git commit, or secret/configuration rotation was performed.
+See docs/architecture/{execution-engine,asynchronous-runs,scheduling,reliability}.md for exact behavior.

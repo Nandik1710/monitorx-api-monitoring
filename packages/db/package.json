@@ -13,6 +13,25 @@
   },
   "scripts": {
     "build": "tsc -p tsconfig.json",
-    "typecheck": "tsc -p tsconfig.json --noEmit"
+    "typecheck": "tsc -p tsconfig.json --noEmit",
+    "db:generate": "node scripts/prisma.mjs generate",
+    "db:migrate": "node scripts/prisma.mjs migrate deploy",
+    "db:migrate:dev": "node scripts/prisma.mjs migrate dev",
+    "db:seed": "node scripts/prisma.mjs db seed"
+  },
+  "dependencies": {
+    "cron-parser": "5.10.1",
+    "zod": "3.24.1",
+    "@monitorx/contracts": "workspace:*",
+    "@monitorx/security": "workspace:*",
+    "@prisma/client": "6.1.0"
+  },
+  "devDependencies": {
+    "dotenv": "16.4.7",
+    "prisma": "6.1.0",
+    "tsx": "4.19.2"
+  },
+  "prisma": {
+    "seed": "tsx prisma/seed.ts"
   }
 }

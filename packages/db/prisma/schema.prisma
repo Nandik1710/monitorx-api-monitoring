@@ -1,0 +1,622 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+enum AccountStatus {
+  ACTIVE
+  LOCKED
+  DISABLED
+}
+
+enum MembershipRole {
+  OWNER
+  ADMIN
+  EDITOR
+  VIEWER
+}
+
+enum MembershipStatus {
+  INVITED
+  ACTIVE
+  SUSPENDED
+  REMOVED
+}
+
+enum BodyMode {
+  NONE
+  JSON
+  RAW
+  XML
+  FORM_URLENCODED
+}
+
+enum ScheduleRunKind {
+  TEST
+  COLLECTION
+}
+
+enum RunKind {
+  MANUAL
+  SCHEDULED
+  COLLECTION
+}
+
+enum ExecutionStatus {
+  QUEUED
+  RUNNING
+  PASSED
+  DEGRADED
+  FAILED
+  CANCELLED
+}
+
+enum HealthState {
+  HEALTHY
+  DEGRADED
+  DOWN
+  PAUSED
+  UNKNOWN
+}
+
+enum AssertionSeverity {
+  REQUIRED
+  WARNING
+}
+
+enum IncidentState {
+  OPEN
+  ACKNOWLEDGED
+  INVESTIGATING
+  RESOLVED
+}
+
+enum IncidentEventType {
+  OPENED
+  STATE_CHANGED
+  EXECUTION_ATTACHED
+  NOTE_ADDED
+  ALERT_TRIGGERED
+  RECOVERED
+}
+
+enum NotificationChannelType {
+  EMAIL
+  SLACK
+  WEBHOOK
+}
+
+enum DeliveryStatus {
+  QUEUED
+  SENDING
+  DELIVERED
+  FAILED
+}
+
+model User {
+  id               String          @id @default(uuid()) @db.Uuid
+  email            String          @unique @db.VarChar(320)
+  displayName      String          @db.VarChar(120)
+  passwordHash     String?         @db.VarChar(255)
+  status           AccountStatus   @default(ACTIVE)
+  emailVerifiedAt  DateTime?
+  lastLoginAt      DateTime?
+  failedLoginCount Int             @default(0)
+  lockedUntil      DateTime?
+  githubId         String?         @unique @db.VarChar(40)
+  authSessions     AuthSession[]
+  authTokens       AuthToken[]
+  createdAt        DateTime        @default(now())
+  updatedAt        DateTime        @updatedAt
+  memberships      Membership[]
+  incidentEvents   IncidentEvent[] @relation("IncidentEventActor")
+  auditLogs        AuditLog[]      @relation("AuditLogActor")
+
+  @@index([status, createdAt])
+}
+
+enum AuthTokenPurpose {
+  VERIFY_EMAIL
+  RESET_PASSWORD
+}
+
+model AuthSession {
+  id              String    @id @default(uuid()) @db.Uuid
+  userId          String    @db.Uuid
+  familyId        String    @db.Uuid
+  accessHash      String    @unique @db.Char(64)
+  refreshHash     String    @unique @db.Char(64)
+  accessExpiresAt DateTime
+  expiresAt       DateTime
+  usedAt          DateTime?
+  revokedAt       DateTime?
+  createdAt       DateTime  @default(now())
+  user            User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId, revokedAt])
+  @@index([familyId])
+  @@index([expiresAt])
+}
+
+model AuthToken {
+  id        String           @id @default(uuid()) @db.Uuid
+  userId    String           @db.Uuid
+  tokenHash String           @unique @db.Char(64)
+  purpose   AuthTokenPurpose
+  expiresAt DateTime
+  usedAt    DateTime?
+  createdAt DateTime         @default(now())
+  user      User             @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId, purpose])
+  @@index([expiresAt])
+}
+
+model AuthRateLimit {
+  key       String   @id @db.Char(64)
+  count     Int      @default(1)
+  expiresAt DateTime
+
+  @@index([expiresAt])
+}
+
+model OAuthAttempt {
+  stateHash    String    @id @db.Char(64)
+  verifierHash String    @db.Char(64)
+  expiresAt    DateTime
+  usedAt       DateTime?
+
+  @@index([expiresAt])
+}
+
+model Organization {
+  id                          String                   @id @default(uuid()) @db.Uuid
+  name                        String                   @db.VarChar(120)
+  slug                        String                   @unique @db.VarChar(120)
+  testTimeoutLimitMs          Int                      @default(30000)
+  executionRateLimitPerMinute Int?
+  createdAt                   DateTime                 @default(now())
+  updatedAt                   DateTime                 @updatedAt
+  memberships                 Membership[]
+  projects                    Project[]
+  collections                 Collection[]
+  environments                Environment[]
+  environmentSecrets          EnvironmentSecret[]
+  apiTests                    ApiTest[]
+  schedules                   Schedule[]
+  executions                  Execution[]
+  assertionResults            AssertionResult[]
+  incidents                   Incident[]
+  incidentEvents              IncidentEvent[]
+  notificationChannels        NotificationChannel[]
+  alertDeliveries             AlertDelivery[]
+  apiKeys                     ApiKey[]
+  auditLogs                   AuditLog[]
+  invitations                 OrganizationInvitation[]
+  collectionRuns              CollectionRun[]
+  executionEvents             ExecutionEvent[]
+
+  @@index([createdAt])
+}
+
+model Membership {
+  id             String           @id @default(uuid()) @db.Uuid
+  organizationId String           @db.Uuid
+  userId         String           @db.Uuid
+  role           MembershipRole   @default(VIEWER)
+  status         MembershipStatus @default(INVITED)
+  invitedAt      DateTime         @default(now())
+  acceptedAt     DateTime?
+  createdAt      DateTime         @default(now())
+  updatedAt      DateTime         @updatedAt
+  organization   Organization     @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  user           User             @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([organizationId, userId])
+  @@index([organizationId, role, status])
+  @@index([userId, status])
+}
+
+model OrganizationInvitation {
+  id             String         @id @default(uuid()) @db.Uuid
+  organizationId String         @db.Uuid
+  email          String         @db.VarChar(320)
+  role           MembershipRole
+  invitedById    String         @db.Uuid
+  tokenHash      String         @unique @db.Char(64)
+  expiresAt      DateTime
+  acceptedAt     DateTime?
+  revokedAt      DateTime?
+  createdAt      DateTime       @default(now())
+  organization   Organization   @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+
+  @@index([organizationId, email, createdAt])
+  @@index([organizationId, expiresAt])
+}
+
+model Project {
+  id             String        @id @default(uuid()) @db.Uuid
+  organizationId String        @db.Uuid
+  name           String        @db.VarChar(120)
+  slug           String        @db.VarChar(120)
+  archivedAt     DateTime?
+  createdAt      DateTime      @default(now())
+  updatedAt      DateTime      @updatedAt
+  organization   Organization  @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  collections    Collection[]
+  environments   Environment[]
+  apiTests       ApiTest[]
+
+  @@unique([organizationId, slug])
+  @@unique([organizationId, name])
+  @@unique([organizationId, id])
+  @@index([organizationId, archivedAt, createdAt])
+}
+
+model Collection {
+  id             String          @id @default(uuid()) @db.Uuid
+  organizationId String          @db.Uuid
+  projectId      String          @db.Uuid
+  name           String          @db.VarChar(120)
+  description    String?         @db.Text
+  createdAt      DateTime        @default(now())
+  updatedAt      DateTime        @updatedAt
+  organization   Organization    @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  project        Project         @relation(fields: [organizationId, projectId], references: [organizationId, id], onDelete: Cascade)
+  apiTests       ApiTest[]
+  runs           CollectionRun[]
+
+  @@unique([projectId, name])
+  @@unique([organizationId, projectId, id])
+  @@index([organizationId, projectId, createdAt])
+}
+
+model Environment {
+  id             String              @id @default(uuid()) @db.Uuid
+  organizationId String              @db.Uuid
+  projectId      String              @db.Uuid
+  name           String              @db.VarChar(120)
+  slug           String              @db.VarChar(120)
+  variables      Json
+  createdAt      DateTime            @default(now())
+  updatedAt      DateTime            @updatedAt
+  organization   Organization        @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  project        Project             @relation(fields: [organizationId, projectId], references: [organizationId, id], onDelete: Cascade)
+  secrets        EnvironmentSecret[]
+  apiTests       ApiTest[]
+  executions     Execution[]
+  incidents      Incident[]
+  collectionRuns CollectionRun[]
+  schedules      Schedule[]
+
+  @@unique([projectId, name])
+  @@unique([projectId, slug])
+  @@unique([organizationId, id])
+  @@unique([organizationId, projectId, id])
+  @@index([organizationId, projectId, createdAt])
+}
+
+model EnvironmentSecret {
+  id             String       @id @default(uuid()) @db.Uuid
+  organizationId String       @db.Uuid
+  environmentId  String       @db.Uuid
+  key            String       @db.VarChar(120)
+  ciphertext     String       @db.Text
+  keyVersion     Int          @default(1)
+  createdAt      DateTime     @default(now())
+  updatedAt      DateTime     @updatedAt
+  organization   Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  environment    Environment  @relation(fields: [organizationId, environmentId], references: [organizationId, id], onDelete: Cascade)
+
+  @@unique([environmentId, key])
+  @@index([organizationId, environmentId, updatedAt])
+}
+
+model ApiTest {
+  id              String       @id @default(uuid()) @db.Uuid
+  organizationId  String       @db.Uuid
+  projectId       String       @db.Uuid
+  collectionId    String       @db.Uuid
+  environmentId   String?      @db.Uuid
+  name            String       @db.VarChar(160)
+  method          String       @db.VarChar(16)
+  advancedMethod  Boolean      @default(false)
+  revision        Int          @default(1)
+  urlTemplate     String       @db.VarChar(2048)
+  queryRows       Json
+  headerRows      Json
+  bodyMode        BodyMode     @default(NONE)
+  bodyTemplate    String?      @db.Text
+  formRows        Json         @default("[]")
+  authConfig      Json?
+  timeoutMs       Int          @default(10000)
+  followRedirects Boolean      @default(false)
+  maxRedirects    Int          @default(0)
+  assertions      Json
+  tags            String[]
+  enabled         Boolean      @default(false)
+  createdAt       DateTime     @default(now())
+  updatedAt       DateTime     @updatedAt
+  organization    Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  project         Project      @relation(fields: [organizationId, projectId], references: [organizationId, id], onDelete: Cascade)
+  collection      Collection   @relation(fields: [organizationId, projectId, collectionId], references: [organizationId, projectId, id], onDelete: NoAction)
+  environment     Environment? @relation(fields: [organizationId, projectId, environmentId], references: [organizationId, projectId, id], onDelete: NoAction)
+  schedules       Schedule[]
+  executions      Execution[]
+  incidents       Incident[]
+
+  @@unique([collectionId, name])
+  @@unique([organizationId, id])
+  @@index([organizationId, projectId, enabled, updatedAt])
+  @@index([organizationId, collectionId, createdAt])
+  @@index([organizationId, environmentId])
+}
+
+model Schedule {
+  id                 String          @id @default(uuid()) @db.Uuid
+  organizationId     String          @db.Uuid
+  testId             String          @db.Uuid
+  environmentId      String?         @db.Uuid
+  createdById        String?         @db.Uuid
+  cadence            String          @default("INTERVAL") @db.VarChar(12)
+  hour               Int             @default(0)
+  minute             Int             @default(0)
+  maintenanceWindows Json            @default("[]")
+  failureThreshold   Int             @default(2)
+  recoveryThreshold  Int             @default(2)
+  kind               ScheduleRunKind @default(TEST)
+  intervalMinutes    Int?
+  cronExpression     String?         @db.VarChar(120)
+  timeZone           String          @default("UTC") @db.VarChar(64)
+  enabled            Boolean         @default(true)
+  pausedAt           DateTime?
+  nextRunAt          DateTime?
+  lastRunAt          DateTime?
+  createdAt          DateTime        @default(now())
+  updatedAt          DateTime        @updatedAt
+  organization       Organization    @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  test               ApiTest         @relation(fields: [organizationId, testId], references: [organizationId, id], onDelete: Cascade)
+  environment        Environment?    @relation(fields: [organizationId, environmentId], references: [organizationId, id], onDelete: NoAction)
+  executions         Execution[]
+
+  @@unique([testId])
+  @@index([organizationId, enabled, nextRunAt])
+  @@index([organizationId, testId])
+  @@index([enabled, nextRunAt])
+}
+
+model Execution {
+  id               String            @id @default(uuid()) @db.Uuid
+  organizationId   String            @db.Uuid
+  testId           String            @db.Uuid
+  scheduleId       String?           @db.Uuid
+  environmentId    String?           @db.Uuid
+  runKind          RunKind           @default(MANUAL)
+  status           ExecutionStatus   @default(QUEUED)
+  healthState      HealthState       @default(UNKNOWN)
+  logicalKey       String?           @unique @db.VarChar(255)
+  scheduledAt      DateTime?
+  startedAt        DateTime?
+  completedAt      DateTime?
+  latencyMs        Int?
+  httpStatus       Int?
+  errorClass       String?           @db.VarChar(80)
+  errorMessage     String?           @db.Text
+  requestMetadata  Json?
+  configSnapshot   Json?
+  requestedById    String?           @db.Uuid
+  collectionRunId  String?           @db.Uuid
+  leaseUntil       DateTime?
+  cancelRequested  Boolean           @default(false)
+  availableAt      DateTime          @default(now())
+  targetHostHash   String?           @db.Char(64)
+  deferCount       Int               @default(0)
+  responsePreview  String?           @db.Text
+  responseBytes    Int?
+  expiresAt        DateTime?
+  createdAt        DateTime          @default(now())
+  updatedAt        DateTime          @updatedAt
+  organization     Organization      @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  test             ApiTest           @relation(fields: [testId], references: [id], onDelete: Cascade)
+  schedule         Schedule?         @relation(fields: [scheduleId], references: [id], onDelete: SetNull)
+  environment      Environment?      @relation(fields: [environmentId], references: [id], onDelete: SetNull)
+  assertionResults AssertionResult[]
+  incidentEvents   IncidentEvent[]
+  alertDeliveries  AlertDelivery[]
+  collectionRun    CollectionRun?    @relation(fields: [collectionRunId], references: [id], onDelete: SetNull)
+  events           ExecutionEvent[]
+
+  @@unique([testId, scheduledAt, runKind])
+  @@index([organizationId, testId, createdAt])
+  @@index([organizationId, status, createdAt])
+  @@index([organizationId, scheduledAt, runKind])
+  @@index([expiresAt])
+  @@index([status, availableAt])
+  @@index([organizationId, collectionRunId, status])
+  @@index([targetHostHash, status])
+  @@index([organizationId, startedAt])
+  @@index([organizationId, completedAt])
+  @@index([organizationId, environmentId, createdAt])
+  @@index([organizationId, testId, completedAt])
+}
+
+model CollectionRun {
+  id             String       @id @default(uuid()) @db.Uuid
+  organizationId String       @db.Uuid
+  projectId      String       @db.Uuid
+  collectionId   String       @db.Uuid
+  environmentId  String       @db.Uuid
+  requestedById  String       @db.Uuid
+  parallelism    Int          @default(2)
+  cancelledAt    DateTime?
+  createdAt      DateTime     @default(now())
+  organization   Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  collection     Collection   @relation(fields: [organizationId, projectId, collectionId], references: [organizationId, projectId, id], onDelete: NoAction)
+  environment    Environment  @relation(fields: [organizationId, environmentId], references: [organizationId, id], onDelete: NoAction)
+  executions     Execution[]
+
+  @@index([organizationId, createdAt])
+}
+
+model ExecutionEvent {
+  id             BigInt       @id @default(autoincrement())
+  organizationId String       @db.Uuid
+  executionId    String       @db.Uuid
+  type           String       @db.VarChar(40)
+  createdAt      DateTime     @default(now())
+  organization   Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  execution      Execution    @relation(fields: [executionId], references: [id], onDelete: Cascade)
+
+  @@index([organizationId, id])
+}
+
+model AssertionResult {
+  id             String            @id @default(uuid()) @db.Uuid
+  organizationId String            @db.Uuid
+  executionId    String            @db.Uuid
+  position       Int
+  type           String            @db.VarChar(40)
+  severity       AssertionSeverity @default(REQUIRED)
+  expected       Json?
+  actual         Json?
+  passed         Boolean
+  message        String?           @db.Text
+  createdAt      DateTime          @default(now())
+  organization   Organization      @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  execution      Execution         @relation(fields: [executionId], references: [id], onDelete: Cascade)
+
+  @@unique([executionId, position])
+  @@index([organizationId, executionId, passed])
+}
+
+model Incident {
+  id              String          @id @default(uuid()) @db.Uuid
+  organizationId  String          @db.Uuid
+  testId          String          @db.Uuid
+  environmentId   String?         @db.Uuid
+  dedupeKey       String          @db.VarChar(255)
+  state           IncidentState   @default(OPEN)
+  healthState     HealthState     @default(DOWN)
+  openedAt        DateTime        @default(now())
+  acknowledgedAt  DateTime?
+  investigatingAt DateTime?
+  resolvedAt      DateTime?
+  lastFailureAt   DateTime?
+  expiresAt       DateTime?
+  createdAt       DateTime        @default(now())
+  updatedAt       DateTime        @updatedAt
+  organization    Organization    @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  test            ApiTest         @relation(fields: [testId], references: [id], onDelete: Cascade)
+  environment     Environment?    @relation(fields: [environmentId], references: [id], onDelete: SetNull)
+  events          IncidentEvent[]
+  alertDeliveries AlertDelivery[]
+
+  @@index([organizationId, state, openedAt])
+  @@index([organizationId, dedupeKey, state])
+  @@index([organizationId, testId, environmentId, state])
+  @@index([expiresAt])
+}
+
+model IncidentEvent {
+  id             String            @id @default(uuid()) @db.Uuid
+  organizationId String            @db.Uuid
+  incidentId     String            @db.Uuid
+  executionId    String?           @db.Uuid
+  actorUserId    String?           @db.Uuid
+  type           IncidentEventType
+  note           String?           @db.Text
+  metadata       Json?
+  createdAt      DateTime          @default(now())
+  organization   Organization      @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  incident       Incident          @relation(fields: [incidentId], references: [id], onDelete: Cascade)
+  execution      Execution?        @relation(fields: [executionId], references: [id], onDelete: SetNull)
+  actorUser      User?             @relation("IncidentEventActor", fields: [actorUserId], references: [id], onDelete: SetNull)
+
+  @@index([organizationId, incidentId, createdAt])
+  @@index([organizationId, executionId])
+}
+
+model NotificationChannel {
+  id               String                  @id @default(uuid()) @db.Uuid
+  organizationId   String                  @db.Uuid
+  name             String                  @db.VarChar(120)
+  type             NotificationChannelType
+  configCiphertext String                  @db.Text
+  keyVersion       Int                     @default(1)
+  enabled          Boolean                 @default(true)
+  createdAt        DateTime                @default(now())
+  updatedAt        DateTime                @updatedAt
+  organization     Organization            @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  alertDeliveries  AlertDelivery[]
+
+  @@unique([organizationId, name])
+  @@index([organizationId, enabled, type])
+}
+
+model AlertDelivery {
+  id             String              @id @default(uuid()) @db.Uuid
+  organizationId String              @db.Uuid
+  incidentId     String              @db.Uuid
+  executionId    String?             @db.Uuid
+  channelId      String              @db.Uuid
+  eventId        String              @db.VarChar(255)
+  status         DeliveryStatus      @default(QUEUED)
+  attemptCount   Int                 @default(0)
+  nextAttemptAt  DateTime?
+  deliveredAt    DateTime?
+  lastError      String?             @db.Text
+  expiresAt      DateTime?
+  createdAt      DateTime            @default(now())
+  updatedAt      DateTime            @updatedAt
+  organization   Organization        @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  incident       Incident            @relation(fields: [incidentId], references: [id], onDelete: Cascade)
+  execution      Execution?          @relation(fields: [executionId], references: [id], onDelete: SetNull)
+  channel        NotificationChannel @relation(fields: [channelId], references: [id], onDelete: Cascade)
+
+  @@unique([organizationId, channelId, eventId])
+  @@index([organizationId, status, nextAttemptAt])
+  @@index([organizationId, incidentId, createdAt])
+  @@index([expiresAt])
+}
+
+model ApiKey {
+  id             String       @id @default(uuid()) @db.Uuid
+  organizationId String       @db.Uuid
+  name           String       @db.VarChar(120)
+  keyPrefix      String       @db.VarChar(24)
+  keyHash        String       @unique @db.VarChar(255)
+  scopes         String[]
+  expiresAt      DateTime?
+  revokedAt      DateTime?
+  lastUsedAt     DateTime?
+  createdAt      DateTime     @default(now())
+  updatedAt      DateTime     @updatedAt
+  organization   Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+
+  @@unique([organizationId, keyPrefix])
+  @@index([organizationId, revokedAt, expiresAt])
+}
+
+model AuditLog {
+  id             String        @id @default(uuid()) @db.Uuid
+  organizationId String?       @db.Uuid
+  actorUserId    String?       @db.Uuid
+  action         String        @db.VarChar(120)
+  entityType     String?       @db.VarChar(80)
+  entityId       String?       @db.Uuid
+  requestId      String?       @db.VarChar(120)
+  metadata       Json?
+  expiresAt      DateTime?
+  createdAt      DateTime      @default(now())
+  organization   Organization? @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  actorUser      User?         @relation("AuditLogActor", fields: [actorUserId], references: [id], onDelete: SetNull)
+
+  @@index([organizationId, createdAt])
+  @@index([organizationId, action, createdAt])
+  @@index([actorUserId, createdAt])
+  @@index([expiresAt])
+}

@@ -11,6 +11,12 @@
       "import": "./dist/index.js"
     }
   },
+  "dependencies": {
+    "@monitorx/contracts": "workspace:*",
+    "ipaddr.js": "2.5.0",
+    "re2-wasm": "1.0.2",
+    "fast-xml-parser": "5.11.2"
+  },
   "scripts": {
     "build": "tsc -p tsconfig.json",
     "typecheck": "tsc -p tsconfig.json --noEmit"

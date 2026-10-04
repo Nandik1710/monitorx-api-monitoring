@@ -1,0 +1,78 @@
+MONITOR-X: ORDERED 15-PROMPT BUILD PLAN
+=======================================
+
+How to use this file
+--------------------
+Use exactly one prompt at a time, in order. Paste Prompt 1 into Codex first, then wait for the implementation and report. Do not ask Codex to execute later prompts early. Every prompt must inspect existing work, preserve working features, implement only its phase, run the relevant tests, update howToRun.txt and updates.txt, and clearly report what was done and what you must do manually.
+
+Global rules for every prompt
+-----------------------------
+- Treat Supporting Documents/Monitor-X_Final_Production_Specification.pdf as the authoritative design.
+- Work inside this repository and preserve existing user changes.
+- Use TypeScript, strict validation, tenant-scoped authorization, safe defaults, and maintainable modules.
+- Do not commit secrets or print secret values in logs, tests, output, or documentation.
+- Do not claim a feature is complete without tests and a short manual verification path.
+- Keep the API stateless; perform outbound monitored requests in workers.
+- Keep PostgreSQL as the durable source of truth; Redis/BullMQ is reconstructible.
+- Stop after the current phase. Do not begin the next prompt automatically.
+
+PROMPT 1 - Monorepo foundation and local development baseline
+---------------------------------------------------------------
+Read reamdme.txt, howToRun.txt, updates.txt, and this prompt file. Create a maintainable pnpm TypeScript monorepo with apps/web, apps/api, apps/worker, packages/db, packages/contracts, packages/test-engine, packages/security, packages/ui, packages/cli, infra/cdk, docker, docs, tests, scripts, and .github/workflows. Add root workspace manifests, strict TypeScript configuration, formatting/linting, test configuration, environment example files, safe .gitignore coverage, and Docker Compose for pinned local PostgreSQL, Redis, and Mailpit images. Create minimal health-check entrypoints for the API and worker plus a minimal web shell so a clean checkout can install, build, lint, typecheck, and start. Do not implement product features yet. Run all foundation checks from a clean install. Update howToRun.txt with exact versions, ports, commands, and local env setup. Update updates.txt with the implementation summary, tests, manual actions, and limitations. Stop and report.
+
+PROMPT 2 - PostgreSQL, Prisma schema, migrations, and shared contracts
+-----------------------------------------------------------------------
+Build the durable data layer and shared validation contracts. Implement Prisma models and migrations for users, organizations, memberships, projects, collections, environments, environment_secrets, api_tests, schedules, executions, assertion_results, incidents, incident_events, notification_channels, alert_deliveries, api_keys, and audit_logs. Add required enums, tenant-safe indexes, uniqueness constraints, timestamps, retention-ready fields, and repository/service abstractions. Add shared Zod contracts and typed error envelopes for API inputs/outputs. Add deterministic seed data using fake non-secret values. Add database and Redis integration test setup. Verify migrations apply from an empty database, seed works, constraints behave correctly, and tenant identifiers are represented in all organization-owned entities. Update both living docs and stop.
+
+PROMPT 3 - Authentication and session security
+-----------------------------------------------
+Implement email/password registration, login, logout, refresh-session rotation, email verification, password reset, secure password hashing, account lockout/backoff, and audit logging of authentication events. Use Secure, HttpOnly, SameSite cookies for sessions and CSRF/origin protections for cookie-authenticated mutations. Add optional GitHub OAuth behind explicit configuration without making it required for local use. Add rate limits for auth endpoints and stable error responses that do not disclose account existence. Add Mailpit-compatible local email delivery. Test happy paths, invalid credentials, expired/single-use tokens, refresh rotation/reuse, lockout/backoff, CSRF, and audit events. Update howToRun.txt with exact local auth setup and optional GitHub callback credentials, update updates.txt, and stop.
+
+PROMPT 4 - Multi-tenancy, RBAC, environments, and encrypted secrets
+---------------------------------------------------------------------
+Implement organization/workspace creation, membership invitations, role changes, project CRUD, environment CRUD, non-secret variables, and encrypted tenant secrets. Enforce Owner/Admin/Editor/Viewer permissions in service methods and routes. Every organization-owned query must require the authenticated organization context; object IDs must never bypass membership checks. Mask secrets after creation, prevent secret echo in responses, and add audit events for invitations, role changes, environment/secret changes, and project changes. Implement application-level encryption with key versioning and a provider-neutral local key, while leaving KMS integration configurable for deployment. Add comprehensive cross-tenant denial tests and secret-redaction tests. Update both living docs and stop.
+
+PROMPT 5 - API test, collection, request-builder, and configuration APIs
+------------------------------------------------------------------------
+Implement collections and reusable API tests with CRUD APIs and frontend forms. Support method, URL template, query rows, headers, body modes, authentication configuration, timeout, redirect policy, assertions, tags, selected environment, and enabled status. Add deterministic variable syntax such as {{BASE_URL}}, validation of request definitions, bounded timeouts/body/header sizes, and clear validation errors. Build the request tab, body tab, assertions tab, environment preview with masked secrets, schedule placeholder, and history placeholder using the shared UI package. Add API and component tests. Do not perform outbound requests in API handlers. Update howToRun.txt with the first manual test-creation flow, update updates.txt, and stop.
+
+PROMPT 6 - Safe execution engine and core assertions
+-----------------------------------------------------
+Implement packages/test-engine for variable expansion, request normalization, bounded HTTP execution, response decoding, assertion evaluation, error classification, redaction, and execution-result serialization. Support REST/JSON, GraphQL HTTP, SOAP/XML-style HTTP, and arbitrary safe HTTP. Implement status, latency, header, JSON path, JSON comparison, text, bounded regex, XML/XPath, and optional JSON Schema assertions. Implement mandatory SSRF protections: http/https only, DNS/IP validation for IPv4/IPv6, rejection of loopback/private/link-local/multicast/CGNAT/reserved/metadata ranges, redirect revalidation, bounded response/request sizes, TLS validation, and no arbitrary user JavaScript. Add unit and worker integration tests for healthy/failing/timeout/TLS/redirect/large-response/private-target/DNS-rebinding cases and sensitive-header redaction. Update both living docs and stop.
+
+PROMPT 7 - BullMQ workers, asynchronous manual runs, and live events
+--------------------------------------------------------------------
+Implement Redis/BullMQ queues for execution, collection-run, alerts, imports, and maintenance. Add API run-submission endpoints that return a run ID immediately, execution workers that load authorized immutable configuration, run the test engine, persist executions and assertion results, and publish authenticated execution.queued, execution.started, and execution.completed events. Add WebSocket authentication and frontend live status updates. Support single-test and collection runs with bounded collection parallelism and safe cancellation where possible. Ensure operational retries do not turn a target API failure into a different result. Test queue behavior, persistence-before-success, retry classification, event delivery, worker restart behavior, and API non-blocking behavior. Update both living docs and stop.
+
+PROMPT 8 - Scheduling, reconciliation, idempotency, and concurrency limits
+-------------------------------------------------------------------------
+Implement schedules with 1/5/10/15/30/60-minute intervals plus hourly/daily cadence, time zones, pause/resume, maintenance windows, next_run_at, incident thresholds, and enabled state. Build the scheduler/reconciler so PostgreSQL is the source of truth and deterministic BullMQ job IDs are rebuilt after Redis loss. Implement the unique logical execution tuple test_id + scheduled_at + run_kind, bounded global/organization/target-host concurrency, optional rate limits, capped exponential backoff with jitter, scheduler lag metrics, and duplicate/missed-job handling. Test restart, Redis flush/rebuild, duplicate enqueue, idempotency, pause behavior, time zones, and rate-limit rescheduling. Update both living docs and stop.
+
+PROMPT 9 - Execution history, metrics, dashboards, and reliability UX
+---------------------------------------------------------------------
+Build paginated/filterable execution history and execution detail pages showing request metadata, redacted response preview, latency, HTTP status, error class, and individual assertion results. Implement current health, uptime over selectable ranges, pass rate, average/p50/p95/p99 latency, recent/open incidents, error-class breakdown, degraded endpoints, and slowest endpoints using indexed queries and aggregation suited to the current scale. Build the project and collection dashboards with accessible status icons/text, responsive tables, JSON/code viewers, copy controls, and no color-only status communication. Add API, aggregation, and frontend tests. Update howToRun.txt with the manual dashboard verification workflow, update updates.txt, and stop.
+
+PROMPT 10 - Incidents, alert channels, deliveries, retries, and live alert state
+--------------------------------------------------------------------------------
+Implement configurable incident rules, health transitions, incident deduplication, OPEN/ACKNOWLEDGED/INVESTIGATING/RESOLVED state changes, automatic recovery, maintenance suppression, incident timeline events, and authenticated live incident events. Implement Slack, email, and generic signed webhook channels, test-notification endpoints, state-change triggers, cooldowns, delivery records, retry with exponential backoff, HMAC timestamp/event-id signatures, and visible failure status. Ensure a target API failure is recorded once logically even when worker or alert retries occur. Add integration tests with Mailpit and mock Slack/webhook providers for open, dedupe, retry, cooldown, recovery, and signature verification. Update both living docs and stop.
+
+PROMPT 11 - OpenAPI/Swagger import
+-------------------------------
+Implement OpenAPI 3.x JSON/YAML import from upload and approved URL sources using the import worker. Parse servers, paths, methods, parameters, request bodies, examples, and authentication schemes. Generate one disabled draft Monitor-X test per operation, map servers to environment variables where possible, and mark unresolved auth/examples for review. Add strict upload/URL size, scheme, SSRF, and parsing protections. Never auto-enable a production schedule. Add fixtures and tests for valid, incomplete, invalid, oversized, and unsafe imports. Update howToRun.txt with the exact draft-import manual check, update updates.txt, and stop.
+
+PROMPT 12 - Scoped API keys, automation API, CLI, GitHub Actions, and audit views
+--------------------------------------------------------------------------------
+Implement cryptographically random scoped API keys shown only once, hashed at rest with prefix, scopes, expiration, and immediate revocation. Implement POST /api/v1/automation/collections/{collectionId}/runs with environmentId, wait, source, and commitSha fields plus polling and safe authorization. Build the monitorx CLI with collection run, environment, wait, and clear exit codes: 0 pass, 1 assertion/check failure, 2 configuration/authentication error. Add a GitHub Actions example using repository secrets and immutable action inputs. Build the audit log API and UI with filters and pagination. Test scopes, expiration, revocation, tenant isolation, CLI exit behavior, wait/polling, and audit records. Update both living docs and stop.
+
+PROMPT 13 - Security hardening, observability, accessibility, and operational controls
+------------------------------------------------------------------------------------
+Harden the whole application against the specification. Add structured JSON logs with requestId, organizationId when safe, service, jobId, and executionId; redaction middleware; OpenTelemetry hooks; internal metrics for API errors/latency, queue depth/age, worker failures, scheduler lag, database connections, and alert failures; and health/readiness checks. Add security headers, restrictive CORS, CSP, request/body limits, rate limits, dependency/secret scanning configuration, retention jobs, and safe error handling. Review tenant isolation, SSRF, secret storage, cookies/CSRF, API keys, webhook replay protection, and database access. Complete keyboard accessibility, responsive behavior, confirmation for destructive actions, and status text/icon pairing. Add regression tests and update both living docs. Stop after reporting gaps and manual review items.
+
+PROMPT 14 - Full test pyramid, Docker images, AWS CDK, CI/CD, backups, and staging
+----------------------------------------------------------------------------------
+Complete the quality and deployment system. Add unit, integration, worker, E2E Playwright, load/k6, SSRF/security regression, dependency, secret-scan, lint, typecheck, and build workflows. Build production Dockerfiles for web/API/worker and test them from a clean checkout. Implement AWS CDK stacks for network, data, edge, compute, and observability using private subnets, ALB, ECS Fargate, RDS PostgreSQL, ElastiCache Redis, ECR, S3/CloudFront, WAF, Secrets Manager/KMS, CloudWatch, backups, alarms, and controlled worker egress. Add expand-and-contract migration guidance, immutable image tags, GitHub Actions OIDC deployment, smoke tests, rollback, RDS PITR, Redis reconstruction, budget alarms, and staging configuration. Do not deploy to a real AWS account without showing the user the exact resources and expected cost first. Update both living docs and stop.
+
+PROMPT 15 - Final integration, acceptance testing, demo, and release readiness
+--------------------------------------------------------------------------
+Run the complete project from a clean checkout and execute every product, security, reliability, deployment, and portfolio acceptance criterion in the final specification. Fix remaining defects, flaky tests, accessibility issues, data/metric mismatches, redaction gaps, migration risks, and documentation drift. Create a safe demo project with one healthy, one slow/degraded, and one intentionally failing API. Verify manual run, collection run, scheduled run, Redis rebuild, incident open/dedupe/recovery, real test notification, OpenAPI draft import, scoped CI trigger, audit trail, SSRF blocks, logs, backups, rollback, HTTPS, and CloudWatch alarms where deployed. Complete reamdme.txt, howToRun.txt, updates.txt, architecture/API/runbook docs, screenshots, demo flow, environment catalog, and release checklist. Report exactly what is implemented, what was tested, what remains manual/external, and whether the Definition of Done is fully satisfied. Do not claim production readiness if any required acceptance item is unverified. Update both living docs and stop.
+

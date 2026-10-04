@@ -10,6 +10,12 @@
     "typecheck": "tsc -p tsconfig.json --noEmit"
   },
   "dependencies": {
+    "@monitorx/contracts": "workspace:*",
+    "@monitorx/db": "workspace:*",
+    "@monitorx/security": "workspace:*",
+    "@monitorx/test-engine": "workspace:*",
+    "@prisma/client": "6.1.0",
+    "bullmq": "6.3.11",
     "dotenv": "16.4.7",
     "zod": "3.24.1"
   },
